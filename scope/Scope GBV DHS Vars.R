@@ -1,9 +1,9 @@
-setwd('G://My Drive/DHS New/')
-
 library(haven)
 library(tidyverse)
 
-vars <- read.csv('C://Users/matt/gbv/scope/gbv_codes.csv')
+setwd('~/climatedisk/DHS')
+
+vars <- read.csv('~/gbv_codes.csv')
 
 ##############################
 #Scope Available Datasets
@@ -25,20 +25,26 @@ ir_df <- lapply(X = ir, FUN = makeFileNameDf) %>%
   Reduce(f = bind_rows) %>%
   rename(ir=file)
 
-for (i in 1:nrow(ir_df)){
-  dat <- read_dta(ir_df$ir[i])
+bad <- NULL
 
+for (i in 1:nrow(ir_df)){
   print(paste0(i, ' ', round(i/nrow(ir_df), 3)*100, '% on ', ir_df$cc[i], '-', ir_df$num[i], '-', ir_df$subversion[i]))
 
-  for (var in vars$label){
-    if (var %in% names(dat)){
-      ir_df[i, var] <- TRUE
+  tryCatch({
+    dat <- read_dta(ir_df$ir[i])
+  
+    for (var in vars$label[vars$file=="IR"]){
+      if (var %in% names(dat)){
+        ir_df[i, var] <- TRUE
+      }
     }
-  }
+  }, error=function(e){
+    bad <- c(bad, ir_df$ir[i])
+  })
 }
 
-#Add Geographic Data
-ge <- list.files(pattern='^..(GE|eg).....(SHP|shp)$')
+#Add Men's Recode
+mr <- list.files(pattern='^..(MR|mr).....(DTA|dta)$')
 
 makeFileNameDf <- function(f){
   num <- substr(f, 5, 5)
@@ -50,10 +56,38 @@ makeFileNameDf <- function(f){
   data.frame(num, cc, subversion, file=f)
 }
 
+mr_df <- lapply(X = mr, FUN = makeFileNameDf) %>%
+  Reduce(f = bind_rows) %>%
+  rename(mr=file)
+
+for (i in 1:nrow(mr_df)){
+  print(paste0(i, ' ', round(i/nrow(mr_df), 3)*100, '% on ', mr_df$cc[i], '-', mr_df$num[i], '-', mr_df$subversion[i]))
+  
+  tryCatch({
+    dat <- read_dta(mr_df$mr[i])
+    
+    for (var in vars$label[vars$file=="MR"]){
+      if (var %in% names(dat)){
+        mr_df[i, var] <- TRUE
+      }
+    }
+  }, error=function(e){
+    bad <- c(bad, mr_df$mr[i])
+  })
+
+}
+
+#Add Geographic Data
+ge <- list.files(pattern='^..(GE|eg).....(SHP|shp)$')
+
 ge_df <- lapply(X = ge, FUN = makeFileNameDf) %>%
   Reduce(f = bind_rows) %>%
   rename(ge=file)
 
-all <- merge(ir_df, ge_df, all.x=T, all.y=T)
+#Combine
+all <- Reduce(function(x, y){merge(x, y, all.x=T, all.y=T)},
+              x=list(ir_df, mr_df, ge_df))
 
-write.csv(ir_df, 'C://Users/matt/gbv/scope/scoped_vars.csv', row.names=F)
+write.csv(all, '~/scoped_vars.csv', row.names=F)
+
+

@@ -1,95 +1,116 @@
-setwd('G://My Drive/DHS New/')
+setwd('~/climatedisk/DHS')
 
 library(haven)
 library(tidyverse)
+library(foreign)
 
-##############################
-#Scope Available Datasets
-#################################
+gbv_vars <- read.csv('~/gbv_codes.csv', stringsAsFactors = F)
 
-ir <- list.files(pattern='^..(IR|ir).....(DTA|dta)$')
+files <- read.csv('~/scoped_vars.csv', stringsAsFactors = F) %>%
+  filter(rowSums(is.na(.)) < 101 & !is.na(ge)) %>%
+  select(num, cc, subversion, ir, mr, ge)
 
-makeFileNameDf <- function(f){
-  num <- substr(f, 5, 5)
-  cc <- toupper(substr(f, 1, 2))
-  subversion <- ifelse(toupper(substr(f, 6, 6)) %in% as.character(seq(0, 9)), 1,
-                       ifelse(toupper(substr(f, 6, 6)) %in% LETTERS[1:8], 2, 
-                              ifelse(toupper(substr(f, 6, 6)) %in% LETTERS[9:17], 3, 
-                                     ifelse(toupper(substr(f, 6, 6)) %in% LETTERS[18:26], 4))))
-  data.frame(num, cc, subversion, file=f)
-}
+ir_vars <- gbv_vars$label[gbv_vars$file=='IR']
+mr_vars <- gbv_vars$label[gbv_vars$file=='MR']
 
-ir_df <- lapply(X = ir, FUN = makeFileNameDf) %>%
-  Reduce(f = bind_rows) %>%
-  rename(ir=file)
-
-#Follow guide here: https://dhsprogram.com/pubs/pdf/DHSG1/Guide_to_DHS_Statistics_DHS-7.pdf
-#Section 17.3
-gbv_vars <- c('d105a', 'd105b', 'd105c', 'd105d', 'd105e', 'd105f', 'd105g', 'd105j', 'd115y', 'd117a', 'd118y', 'd130a', 'd005')
-
-alldata <- data.frame()
-for (i in 1:nrow(ir_df)){
-  dat <- read_dta(ir_df$ir[i])
+women <- data.frame()
+men <- data.frame()
+for (i in 1:nrow(files)){
   
-  print(paste0(round(i/nrow(ir_df), 3)*100, '% on ', ir_df$cc[i], '-', ir_df$num[i], '-', ir_df$subversion[i]))
+  #Get Women's Data
+  ir_dat <- read_dta(files$ir[i])
   
-  if (!any(gbv_vars %in% names(dat))){
-    next
-  } else{
-    print("Has Domestic Violence Module")
-  }
+  print(paste0(round(i/nrow(files), 3)*100, '% on ', files$cc[i], '-', files$num[i], '-', files$subversion[i]))
   
-  dat_sel <- dat[ , c(gbv_vars[gbv_vars %in% names(dat)], 'v044', "v001", "v000", "v002", "v009", "v006", "v007", "v008", "v005")]
-  
-  for (n in names(dat_sel)){
-    if (class(dat_sel[ , n, drop=TRUE])=='haven_labelled'){
-      dat_sel[ , paste0(n, '_chr')] <- as.character(as_factor(dat_sel[ , n, drop=TRUE]))
-      dat_sel[ , paste0(n, '_int')] <- as.numeric(dat_sel[ , n, drop=TRUE])
-      dat_sel[ , n] <- NULL
+  ir_dat_sel <- ir_dat[ , c(ir_vars[ir_vars %in% names(ir_dat)], "v001", "v002", "v006", "v008")]
+  for (n in ir_vars[ir_vars %in% names(ir_dat_sel)]){
+    if (class(ir_dat_sel[ , n, drop=TRUE])=='haven_labelled'){
+      ir_dat_sel[ , paste0(n, '_chr')] <- as.character(as_factor(ir_dat_sel[ , n, drop=TRUE]))
+      ir_dat_sel[ , paste0(n, '_int')] <- as.numeric(ir_dat_sel[ , n, drop=TRUE])
+      ir_dat_sel[ , n] <- NULL
     }
   }
+  ir_dat_sel$cc <- files$cc[i]
+  ir_dat_sel$subversion <- files$subversion[i]
+  ir_dat_sel$num <- files$num[i]
+  ir_dat_sel$code <- paste0(ir_dat_sel$cc, '-', ir_dat_sel$num, '-', ir_dat_sel$subversion, '-', ir_dat_sel$v001)
+  ir_dat_sel$hh_code <- paste0(ir_dat_sel$code, '-', ir_dat_sel$v002)
   
-  dat_sel$cc <- ir_df$cc[i]
-  dat_sel$subversion <- ir_df$subversion[i]
-  dat_sel$num <- ir_df$num[i]
+  #Get Men's Data
+  if (!is.na(files$mr[i])){
+    mr_dat <- read_dta(files$mr[i])
+    
+    mr_dat_sel <- mr_dat[ , c(mr_vars[mr_vars %in% names(mr_dat)], "mv001", "mv002", "mv008")]
+    for (n in mr_vars[mr_vars %in% names(mr_dat_sel)]){
+      if (class(mr_dat_sel[ , n, drop=TRUE])=='haven_labelled'){
+        mr_dat_sel[ , paste0(n, '_chr')] <- as.character(as_factor(mr_dat_sel[ , n, drop=TRUE]))
+        mr_dat_sel[ , paste0(n, '_int')] <- as.numeric(mr_dat_sel[ , n, drop=TRUE])
+        mr_dat_sel[ , n] <- NULL
+      }
+    }
+    mr_dat_sel$cc <- files$cc[i]
+    mr_dat_sel$subversion <- files$subversion[i]
+    mr_dat_sel$num <- files$num[i]
+    mr_dat_sel$code <- paste0(mr_dat_sel$cc, '-', mr_dat_sel$num, '-', mr_dat_sel$subversion, '-', mr_dat_sel$mv001)
+    mr_dat_sel$hh_code <- paste0(mr_dat_sel$code, '-', mr_dat_sel$mv002)
+  }else{
+    mr_dat_sel <- data.frame()
+  }
   
-  alldata <- bind_rows(alldata, dat_sel)
+  #Now get spatial data
+  spheadervars <- c('DHSCLUST', 'LATNUM', 'LONGNUM')
   
+  spdat <- read.dbf(gsub('.shp', '.dbf', files$ge[i]), as.is=TRUE)
+  if (!all(spheadervars %in% names(spdat))){
+    cat(files$ge[i], 'is missing necessary column names\n')
+  }else{
+    spdat <- spdat[ , spheadervars]
+    spdat$num <- substr(files$ge[i], 5, 5)
+    spdat$cc <- toupper(substr(files$ge[i], 1, 2))
+    spdat$subversion <- ifelse(toupper(substr(files$ge[i], 6, 6)) %in% as.character(seq(0, 9)), 1,
+                               ifelse(toupper(substr(files$ge[i], 6, 6)) %in% LETTERS[1:8], 2,
+                                      ifelse(toupper(substr(files$ge[i], 6, 6)) %in% LETTERS[9:17], 3,
+                                             ifelse(toupper(substr(files$ge[i], 6, 6)) %in% LETTERS[18:26], 4, 99))))
+    spdat$code <- paste(spdat$cc, spdat$num, spdat$subversion, spdat$DHSCLUST, sep='-')
+    spdat <- spdat %>%
+      select(latitude=LATNUM, longitude=LONGNUM, code=code)
+  }
+  
+  initialsize <- nrow(ir_dat_sel)
+  ir_dat_sel <- merge(ir_dat_sel, spdat, all.x=T, all.y=F)
+  
+  if (initialsize != nrow(ir_dat_sel)){
+    cat("Mismatches in Spatial and Womens data.  Initial size:", initialsize, " now:", nrow(ir_sel), '\n')
+  }
+  
+  initialsize <- nrow(mr_dat_sel)
+  mr_dat_sel <- merge(mr_dat_sel, spdat, all.x=T, all.y=F)
+  
+  if (initialsize != nrow(mr_dat_sel)){
+    cat("Mismatches in Spatial and Mens data.  Initial size:", initialsize, " now:", nrow(mr_sel), '\n')
+  }
+  
+  men <- bind_rows(men, mr_dat_sel)
+  women <- bind_rows(women, ir_dat_sel)
 }
 
-write.csv(alldata, 'G://My Drive/GBV/gbv_dhs_extract.csv', row.names=F)
+setwd('~')
 
-sel <- alldata %>% filter(v044_int==1)
+women <- women %>%
+  mutate(country = substr(code, 1, 2),
+         v008 = ifelse(country=='NP', v008 - 681, v008))
+		 
+men <- men %>%
+  mutate(country = substr(code, 1, 2),
+         mv008 = ifelse(country=='NP', mv008 - 681, mv008))
 
-#interview month
-sel$interview_month <- rowSums(sel[ , c('v006', 'v006_int')], na.rm=T)
+write.csv(men, 'GBV_men_raw.csv', row.names=F)
+write.csv(women, 'GBV_women_raw.csv', row.names=F)
 
-#interview year
-sel$interview_year <- rowSums(sel[ , c('v007', 'v007_int')], na.rm=T)
-sel$interview_year[which(sel$interview_year > 2020 & sel$interview_month %in% seq(1, 9))] <- sel$interview_year[which(sel$interview_year > 2020 & sel$interview_month %in% seq(1, 9))] - 57
-sel$interview_year[which(sel$interview_year > 2020 & sel$interview_month %in% seq(10, 12))] <- sel$interview_year[which(sel$interview_year > 2020 & sel$interview_month %in% seq(10, 12))] - 56
+geo <- women %>% select(latitude, longitude, code, v008) %>%
+  unique
 
-#make codes
-sel$surveycode <- paste0(sel$cc, '-', sel$num, '-', sel$subversion)
-sel$code <- paste0(sel$surveycode, '-', sel$v001)
+write.csv(geo, 'GBV_geo.csv', row.names=F)
 
-sel <- sel %>%
-  mutate(d105a_bool= (d105a_int==1 | d105a_int==2),
-         d105b_bool= (d105b_int==1 | d105b_int==2),
-         d105c_bool= (d105c_int==1 | d105c_int==2),
-         d105d_bool= (d105d_int==1 | d105d_int==2),
-         d105e_bool= (d105e_int==1 | d105e_int==2),
-         d105f_bool= (d105f_int==1 | d105f_int==2),
-         d105g_bool= (d105g_int==1 | d105g_int==2),
-         d105j_bool= (d105j_int==1 | d105j_int==2),
-         d117a_bool= (d117a_int==1 | d117a_int==2))
+system('/home/mattcoop/telegram.sh "GBV processing done"')
 
-sel$any_violence = rowSums(sel[ , c('d105a_bool', 'd105b_bool', 'd105c_bool', 'd105d_bool', 'd105e_bool', 
-                                    'd105f_bool', 'd105g_bool', 'd105j_bool', 'd117a_bool')], na.rm=T) > 0
-
-sel$violence_12months <- sel$d117a_bool
-
-sel <- sel %>%
-  select(country=v000, surveycode, code, interview_month, interview_year, any_violence, violence_12months)
-
-write.csv(sel, 'G://My Drive/GBV/gbv_dhs_clean.csv', row.names=F)
