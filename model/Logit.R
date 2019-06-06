@@ -1,13 +1,14 @@
-setwd('G://My Drive/GBV')
+setwd('G://My Drive/DHS Processed')
 
 library(tidyverse)
 library(lme4)
 
-gbv <- read.csv('gbv_dhs_clean.csv')
-
-precip <- read.csv('G://My Drive/DHS Processed/PrecipIndices.csv')
-temp <- read.csv('G://My Drive/DHS Processed/GBV_DHS_Temps.csv') %>%
+gbv <- read.csv('GBV_all.csv')
+precip <- read.csv('GBV_SPI.csv')
+temp <- read.csv('GBV_DHS_Temps.csv') %>%
   rename(interview_year=year, interview_month=month)
+wealth <- read.csv('hh_wealth_harmonized.csv')
+weai <- read.csv('country_weai.csv')
 
 all <- Reduce(merge, list(gbv, precip, temp))
 

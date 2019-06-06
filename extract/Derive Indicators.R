@@ -214,12 +214,11 @@ w$can_sex_condom[w$v502_int != 1] <- NA
 #Physical Violence
 #########################
 
-w$gbv_ever_husband <- (w$d105a_int %in% 1:4) | (w$d105b_int %in% 1:4) | (w$d105c_int %in% 1:4) | (w$d105d_int %in% 1:4) | (w$d105e_int %in% 1:4) | (w$d105f_int %in% 1:4) | (w$d105g_int %in% 1:4) | (w$d105j_int %in% 1:4) | (w$d130a_int %in% 1:4)
 w$gbv_ever_other <- w$d115y_int == 0
 w$gbv_ever_pregnant <- w$d118y_int == 0
 
-w$gbv_year_often <- (w$d105a_int == 1) | (w$d105b_int == 1) | (w$d105c_int == 1) | (w$d105d_int == 1) | (w$d105e_int == 1) | (w$d105f_int == 1) | (w$d105g_int == 1) | (w$d105j_int == 1) | (w$d130a_int == 1)
-w$gbv_year_sometimes <- (w$d105a_int == 2) | (w$d105b_int == 2) | (w$d105c_int == 2) | (w$d105d_int == 2) | (w$d105e_int == 2) | (w$d105f_int == 2) | (w$d105g_int == 2) | (w$d105j_int == 2) | (w$d130a_int == 2)
+w$gbv_year_often <- rowSums(w[ , c('d105a_int', 'd105b_int', 'd105c_int', 'd105d_int', 'd105e_int', 'd105f_int', 'd105g_int', 'd105j_int', 'd117a_int')]==1, na.rm=T) > 0
+w$gbv_year_sometimes <- rowSums(w[ , c('d105a_int', 'd105b_int', 'd105c_int', 'd105d_int', 'd105e_int', 'd105f_int', 'd105g_int', 'd105j_int', 'd117a_int')]==2, na.rm=T) > 0
 
 w$gbv_ever_husband[w$v044_int != 1] <- NA
 w$gbv_ever_other[w$v044_int != 1] <- NA
@@ -237,8 +236,8 @@ w$sexbv_ever_husband <- (w$d105h_int %in% 1:4) | (w$d105i_int %in% 1:4) | (w$d10
 w$sexbv_year_other <- w$d124_int == 0
 w$sexbv_ever_unwanted <- w$d125_int == 1
 
-w$sexbv_year_often <- (w$d105h_int == 1) | (w$d105i_int == 1) | (w$d105k_int == 1) 
-w$sexbv_year_sometimes <- (w$d105h_int == 2) | (w$d105i_int == 2) | (w$d105k_int == 2) 
+w$sexbv_year_often <- rowSums(w[, c('d105h_int', 'd105i_int','d105k_int')] == 1, na.rm=T) > 1
+w$sexbv_year_sometimes <- rowSums(w[, c('d105h_int', 'd105i_int','d105k_int')] == 2, na.rm=T) > 1
 
 w$sexbv_ever_husband[w$v044_int != 1] <- NA
 w$sexbv_year_other[w$v044_int != 1] <- NA
@@ -389,10 +388,17 @@ for (n in names(women)[names(women) != 'code']){
 
 weai <- read.csv('country_weai.csv')
 
-all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, men, spi, weai))
+wealth <- read.csv('hh_wealth_harmonized.csv') %>%
+  group_by(code) %>%
+  summarize(cmc=mean(survey_cmc),
+            wealth=mean(wealth_factor_harmonized, na.rm=T),
+            hhsize=mean(hhsize, na.rm=T)) %>%
+  mutate(year=floor((cmc)/12) + 1900,
+         month = round((cmc %% 12) + 1))
+
+all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, men, wealth, spi, weai))
+
+all$surveycode <- substr(all$code, 1, 6)
 
 write.csv(all, 'GBV_all.csv', row.names=F)
-
-
-
-
+  
