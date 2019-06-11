@@ -7,7 +7,7 @@ library(foreign)
 gbv_vars <- read.csv('~/gbv_codes.csv', stringsAsFactors = F)
 
 files <- read.csv('~/scoped_vars.csv', stringsAsFactors = F) %>%
-  filter(rowSums(is.na(.)) < 101 & !is.na(ge)) %>%
+  filter(!is.na(ge) & !is.na(v044)) %>%
   select(num, cc, subversion, ir, mr, ge)
 
 ir_vars <- gbv_vars$label[gbv_vars$file=='IR']
@@ -22,7 +22,7 @@ for (i in 1:nrow(files)){
   
   print(paste0(round(i/nrow(files), 3)*100, '% on ', files$cc[i], '-', files$num[i], '-', files$subversion[i]))
   
-  ir_dat_sel <- ir_dat[ , c(ir_vars[ir_vars %in% names(ir_dat)], "v001", "v002", "v006", "v008")]
+  ir_dat_sel <- ir_dat[ , c(ir_vars[ir_vars %in% names(ir_dat)], "v001", "v002", "v003", "v034", "v006", "v008")]
   for (n in ir_vars[ir_vars %in% names(ir_dat_sel)]){
     if (class(ir_dat_sel[ , n, drop=TRUE])=='haven_labelled'){
       ir_dat_sel[ , paste0(n, '_chr')] <- as.character(as_factor(ir_dat_sel[ , n, drop=TRUE]))
@@ -40,7 +40,7 @@ for (i in 1:nrow(files)){
   if (!is.na(files$mr[i])){
     mr_dat <- read_dta(files$mr[i])
     
-    mr_dat_sel <- mr_dat[ , c(mr_vars[mr_vars %in% names(mr_dat)], "mv001", "mv002", "mv008")]
+    mr_dat_sel <- mr_dat[ , c(mr_vars[mr_vars %in% names(mr_dat)], "mv001", "mv002", "mv003", "mv008")]
     for (n in mr_vars[mr_vars %in% names(mr_dat_sel)]){
       if (class(mr_dat_sel[ , n, drop=TRUE])=='haven_labelled'){
         mr_dat_sel[ , paste0(n, '_chr')] <- as.character(as_factor(mr_dat_sel[ , n, drop=TRUE]))

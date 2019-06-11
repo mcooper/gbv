@@ -2,23 +2,68 @@ setwd('G://My Drive/DHS Processed')
 
 library(tidyverse)
 library(lme4)
+library(mgcv)
+library(MASS)
+library(ordinal)
 
 gbv <- read.csv('GBV_all.csv')
-precip <- read.csv('GBV_SPI.csv')
-temp <- read.csv('GBV_DHS_Temps.csv') %>%
-  rename(interview_year=year, interview_month=month)
-wealth <- read.csv('hh_wealth_harmonized.csv')
-weai <- read.csv('country_weai.csv')
 
-all <- Reduce(merge, list(gbv, precip, temp))
 
-all$cc <- substr(all$surveycode, 1, 2)
 
-countries_from_beliyou <- c("BD", "ET", "GH", "GU", "HN", "KE", "ML", "NP", "NI", "NG", "SN", "UG")
-countries_with_weai <- c("BD", "ET", "GH", "GU", "HN", "KE", "ML", "NP", "NI", "NG", "SN", "UG", 'KH', 'HT', 'LB', 'MW', 'RW', 'TJ', 'ZM')
-countries_with_data <- c("BD", "ET", "GH", "GU", "HN", "KE", "NP", "SN", "UG", 'KH', 'HT', 'LB', 'MW', 'RW', 'TJ', 'ZM')
-countries_from_beliyou_with_data <- c("BD", "ET", "GH", "GU", "HN", "KE", "NP", "SN", "UG")
+gbv$gbv_year <- factor(gbv$gbv_year, levels = c('never', 'sometimes', 'often'))
 
-all$interview_year_resc <- all$interview_year - min(all$interview_year, na.rm=T)
+mod12 <- polr(gbv_year ~ temp12monthZ +
+                wealth_factor_harmonized + hhsize + 
+                empowered_decisions + empowered_gbv_notok, data=gbv)
 
-summary(glmer(violence_12months ~ zsq_12m + spei12 + (1|country) + (1|surveycode) + interview_year_resc, data=all, family='binomial'))
+mod_all <- polr(gbv_year ~ all_Zscore +
+                wealth_factor_harmonized + hhsize + 
+                empowered_decisions + empowered_gbv_notok, data=gbv)
+
+mod_abs <- polr(gbv_year ~ running_mean +
+                wealth_factor_harmonized + hhsize + 
+                empowered_decisions + empowered_gbv_notok, data=gbv)
+
+
+
+mod_fe <- clmm(gbv_year ~ (temp12monthZ|country) + (temp12monthZ|country) + 
+                  wealth_factor_harmonized + hhsize + 
+                  empowered_decisions + empowered_gbv_notok, data=gbv, Hess = TRUE)
+
+summary(mod_fe)
+
+
+mod_fe2 <- clmm(gbv_year ~ temp12monthZ + (temp12monthZ|country) + 
+                 wealth_factor_harmonized + hhsize + 
+                 empowered_decisions + empowered_gbv_notok, data=gbv, Hess = TRUE)
+
+summary(mod_fe2)
+
+
+#High empowerment
+mod_he <- clmm(gbv_year ~ temp12monthZ + (1|country) + 
+                 wealth_factor_harmonized + hhsize + empowered_gbv_notok, 
+               data=gbv %>% filter(empowered_gbv_notok), 
+               Hess = TRUE)
+
+summary(mod_he)
+
+#Low empowerment
+mod_le <- clmm(gbv_year ~ temp12monthZ + (1|country) + 
+                 wealth_factor_harmonized + hhsize + empowered_gbv_notok, 
+               data=gbv %>% filter(!empowered_gbv_notok), 
+               Hess = TRUE)
+
+summary(mod_le)
+
+
+#Empowerment RE
+mod_re <- clmm(gbv_year ~ (temp12monthZ|empowered_gbv_notok) + (1|country) + 
+                 wealth_factor_harmonized + hhsize + empowered_gbv_notok, 
+               data=gbv, 
+               Hess = TRUE)
+
+summary(mod_re)
+
+
+gbv %>% filter(latitude < 10 & latitude > 8 & longitude < 75 & longitude > 70)
