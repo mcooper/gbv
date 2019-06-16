@@ -59,7 +59,7 @@ extract <- function(vrt, x, y){
   
 }
 
-cl <- makeCluster(32, outfile = '')
+cl <- makeCluster(10, outfile = '')
 registerDoParallel(cl)
 
 df <- foreach(n=1:nrow(rll), .packages=c('raster', 'gdalUtils', 'SPEI', 'dplyr', 'zoo'), .combine=bind_rows) %dopar% {
