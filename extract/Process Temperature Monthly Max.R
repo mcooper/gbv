@@ -10,14 +10,14 @@
 
 #This was done on a cloud computer
 
-setwd('/climatedisk/PrincetonTemperature/')
+setwd('~/climatedisk/PrincetonTemperature/')
 
 library(foreach)
 library(doParallel)
 library(raster)
 library(lubridate)
 
-cl <- makeCluster(8, outfile = '')
+cl <- makeCluster(20, outfile = '')
 registerDoParallel(cl)
 
 foreach(f=list.files(pattern = '.nc$'), .packages=c('raster', 'lubridate')) %dopar% {
@@ -38,7 +38,7 @@ foreach(f=list.files(pattern = '.nc$'), .packages=c('raster', 'lubridate')) %dop
     out <- crop(out, extent(0, 360, -60, 90))
     out <- rotate(out)  
     
-    name <- paste0('tmaxmx', year, substr(100 + i, 2, 3), '.tif')
+    name <- paste0('../tmaxmx', year, substr(100 + i, 2, 3), '.tif')
     print(name)
     
     writeRaster(out, name, format='GTiff', overwrite=T)
@@ -46,4 +46,8 @@ foreach(f=list.files(pattern = '.nc$'), .packages=c('raster', 'lubridate')) %dop
 }
 
 stopCluster(cl)
+
+system('/home/mattcoop/telegram.sh "Max Temps Processed"')
+
+
 

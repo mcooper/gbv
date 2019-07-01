@@ -90,13 +90,17 @@ men <- m %>%
 temperature <- read.csv('GBV_Annual_Temp.csv') %>%
   select(code, date_cmc=v008, latitude, longitude, running_mean, pre2000_Zscore, all_Zscore)
 
-spi <- read.csv('GBV_SPI.csv')
+spi <- read.csv('GBV_SPI.csv') %>%
+  select(-tmpcode)
+
+tmax <- read.csv('GBV_Max_Temps.csv') %>%
+  select(-tmpcode)
 
 weai <- read.csv('country_weai.csv')
 
 wealth <- read.csv('hh_wealth_harmonized.csv') %>%
   select(hh_code, code, date_cmc=survey_cmc, wealth_factor_harmonized, hhsize)
 
-all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, men, temperature, spi, wealth, weai))
+all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, men, temperature, spi, tmax, wealth, weai))
 
 write.csv(all, 'GBV_all.csv', row.names=F)
