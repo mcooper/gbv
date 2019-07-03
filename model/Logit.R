@@ -24,9 +24,9 @@ gbv$hhsize_res <- (gbv$hhsize - mean(gbv$hhsize))/sd(gbv$hhsize)
 #Temperature + SPEI
 #############################
 #Base level model
-mod_spi <- glmer(gbv_year ~ pre2000_Zscore + spei24 + 
+mod_spi <- glm(gbv_year ~ temp12max + spei12 + 
               wealth_factor_harmonized + hhsize_res + date_cmc_res +
-              (1|country/surveycode), data=gbv, family = 'binomial')
+              country, data=gbv, family = 'binomial')
 summary(mod_spi)
 
 #Model for empowered with decision-making

@@ -23,38 +23,65 @@ gbv$hhsize_res <- (gbv$hhsize - mean(gbv$hhsize))/sd(gbv$hhsize)
 
 #############################
 #Model
-pre2000_Zscore <- data.frame()
+mod1 <- data.frame()
 for (i in unique(gbv$country)){
   
-  mod_spi <- glm(gbv_year ~ pre2000_Zscore + 
+  sel <- gbv %>%
+    filter(country == i)
+  
+  if (length(unique(sel$surveycode)) > 1){
+    mod_spi <- glm(gbv_year ~ spi36 + 
+                     wealth_factor_harmonized + hhsize_res + date_cmc_res + 
+                     surveycode, 
+                   data=sel, family = 'binomial')
+  } else{
+    mod_spi <- glm(gbv_year ~ spi36 + 
                      wealth_factor_harmonized + hhsize_res + date_cmc_res, 
-                 data=gbv %>% filter(country==i), family = 'binomial')
+                   data=sel, family = 'binomial')
+  }
+
   res <- tidy(mod_spi)
   res$country <- i
-  pre2000_Zscore <- bind_rows(pre2000_Zscore, res)
+  res$n <- nrow(sel)
+  res$surveys <- length(unique(sel$surveycode))
+  mod1 <- bind_rows(mod1, res)
   
   print(i)
 }
 
-temp12monthZ <- data.frame()
+mod2 <- data.frame()
 for (i in unique(gbv$country)){
   
-  mod_spi <- glm(gbv_year ~ temp12monthZ + 
-                   wealth_factor_harmonized + hhsize_res + date_cmc_res, 
-                 data=gbv %>% filter(country==i), family = 'binomial')
+  
+  sel <- gbv %>%
+    filter(country == i)
+  
+  if (length(unique(sel$surveycode)) > 1){
+    mod_spi <- glm(gbv_year ~ temp12max + 
+                     wealth_factor_harmonized + hhsize_res + date_cmc_res + 
+                     surveycode, 
+                   data=sel, family = 'binomial')
+  } else{
+    mod_spi <- glm(gbv_year ~ temp12max + 
+                     wealth_factor_harmonized + hhsize_res + date_cmc_res, 
+                   data=sel, family = 'binomial')
+  }
+  
   res <- tidy(mod_spi)
   res$country <- i
-  temp12monthZ <- bind_rows(temp12monthZ, res)
+  res$n <- nrow(sel)
+  res$surveys <- length(unique(sel$surveycode))
+  mod2 <- bind_rows(mod2, res)
   
   print(i)
 }
 
-a <- temp12monthZ %>%
-  filter(term=='temp12monthZ') %>%
-  select(temp12monthZ=estimate, country)
+a <- mod1 %>%
+  filter(term=='spi36') %>%
+  select(spi36=estimate, spi36p=p.value, country, n, surveys)
 
-b <- pre2000_Zscore %>%
-  filter(term=='pre2000_Zscore') %>%
-  select(pre2000_Zscore=estimate, country)
+b <- mod2 %>%
+  filter(term=='temp12max') %>%
+  select(temp12max=estimate, tmaxp=p.value, country, n, surveys)
 
 comb <- merge(a, b)

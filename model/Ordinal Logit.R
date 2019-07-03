@@ -15,12 +15,16 @@ gbv$surveycode <- substr(gbv$code, 1, 6)
 
 gbv$survey_year <- floor(gbv$date_cmc/12) + 1900
 
+gbv$date_cmc_res <- (gbv$date_cmc - mean(gbv$date_cmc))/sd(gbv$date_cmc)
+
+gbv$hhsize_res <- (gbv$hhsize - mean(gbv$hhsize, na.rm=T))/sd(gbv$hhsize, na.rm=T)
+
 #############################
 #Temperature + SPEI
 #############################
 #Base level model
-mod_spi <- clmm(gbv_year ~ temp12monthZ + spei24 + 
-              wealth_factor_harmonized + hhsize + 
+mod_spi <- clmm(gbv_year ~ temp12max + spei24 + date_cmc_res +
+              wealth_factor_harmonized + hhsize_res + 
               (1|country) + (1|surveycode), data=gbv, Hess = TRUE)
 summary(mod_spi)
 save(mod_spi, file='mod_spi.Rdata')
