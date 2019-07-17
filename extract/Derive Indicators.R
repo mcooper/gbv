@@ -2,11 +2,15 @@ setwd('G://My Drive/DHS Processed')
 
 library(tidyverse)
 
-m <- read.csv('GBV_men_raw.csv') %>%
-  filter(mv150_int == 1)
-
-w <- read.csv('GBV_women_raw.csv') %>%
+w2 <- read.csv('GBV_women_raw2.csv') %>%
   filter(v044_int == 1)
+
+###################################
+#Education
+##################################
+w$years_education <- w$v107_int
+w$years_education[is.na(w$years_education)] <- w$v107[is.na(w$years_education)]
+w$years_education[w$v106==0] <- 0
 
 ##################################
 #Participation in Decision Making
@@ -43,19 +47,6 @@ w$empowered_gbv_notok <- apply(X=w[ , vars], MARGIN = 1, FUN = all, na.rm=T)
 #Unfortinately if all are NA, all() gives TRUE, so find these cases and make them NA
 w$empowered_gbv_notok[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
 
-## Men
-m$gbv_notok_burnedfood <- m$mv744e_int != 1
-m$gbv_notok_arguing <- m$mv744c_int != 1
-m$gbv_notok_goingout <- m$mv744a_int != 1
-m$gbv_notok_neglectingkids <- m$mv744b_int != 1
-m$gbv_notok_refusingsex <- m$mv744d_int != 1
-
-vars <- c('gbv_notok_burnedfood', 'gbv_notok_arguing', 'gbv_notok_goingout', 'gbv_notok_neglectingkids', 'gbv_notok_refusingsex')
-m$men_gbv_notok <- apply(X=m[ , vars], MARGIN = 1, FUN = all, na.rm=T)
-
-#Unfortinately if all are NA, all() gives TRUE, so find these cases and make them NA
-m$men_gbv_notok[apply(X=is.na(m[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
-
 #######################
 #Physical Violence
 #########################
@@ -76,16 +67,9 @@ w$gbv_year <- ifelse(w$gbv_year_often, "often",
 
 women <- w %>%
   select(code, date_cmc=v008, hh_code, 
-         empowered_decisions, empowered_gbv_notok, gbv_year) %>%
+         empowered_decisions, empowered_gbv_notok, gbv_year, years_education) %>%
   mutate(country=substr(code, 1, 2)) %>%
   filter(!is.na(gbv_year))
-
-men <- m %>%
-  select(code, date_cmc=mv008, hh_code, 
-         men_gbv_notok) %>%
-  unique %>%
-  filter(!(duplicated(hh_code) | duplicated(hh_code, fromLast=TRUE))) %>%
-  mutate(country=substr(code, 1, 2))
 
 temperature <- read.csv('GBV_Annual_Temp.csv') %>%
   select(code, date_cmc=v008, latitude, longitude, running_mean, pre2000_Zscore, all_Zscore)
@@ -101,6 +85,9 @@ weai <- read.csv('country_weai.csv')
 wealth <- read.csv('hh_wealth_harmonized.csv') %>%
   select(hh_code, code, date_cmc=survey_cmc, wealth_factor_harmonized, hhsize)
 
-all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, men, temperature, spi, tmax, wealth, weai))
+ltn <- read.csv('GBV_LTNs.csv') %>%
+  select(-tmpcode)
+
+all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, temperature, spi, tmax, wealth, weai, ltn))
 
 write.csv(all, 'GBV_all.csv', row.names=F)

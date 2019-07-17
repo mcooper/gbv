@@ -13,6 +13,8 @@ precip <- read.csv('GBV_Precip_Indices.csv') %>%
   filter(country=='Bangladesh')
 precip$year[precip$year==2012] <- 2011
 
+tmax <- read.csv('BGD_Temp_LTN.csv')
+
 hh <- read.csv('BGD_hh.csv')
 weai <- read_xlsx('../Feed the Future/Bangladesh/4. BIHS_household_2011_15.xlsx') %>%
   mutate(hh_refno=paste0('BGD-', a01),
@@ -32,12 +34,12 @@ weai <- read_xlsx('../Feed the Future/Bangladesh/4. BIHS_household_2011_15.xlsx'
          leisuretime, npoor_z105)
 weai$year[weai$year==2012] <- 2011
 
-all <- Reduce(merge, list(hh, temp, precip, weai))
+all <- Reduce(merge, list(hh, temp, precip, weai, tmax))
 
 ##This is a panel, so do difference-in-differences
 
 dd <- all %>% 
-  select(year, hh_refno, admin1, admin2, temp12max, spei36, 
+  select(year, hh_refno, admin1, admin2, temp12maxZ, spei36, 
          feelinputdecagr, incdec_count, raiprod_any, jown_count, 
          jrightanyagr, credjanydec_any, speakpublic_any, groupmember_any, 
          leisuretime, npoor_z105, fivede) %>%
@@ -45,7 +47,7 @@ dd <- all %>%
   unite(key_year, key, year) %>%
   spread(key_year, value) %>%
   na.omit %>%
-  mutate(temp12max = temp12max_2015 - temp12max_2011,
+  mutate(temp12maxZ = temp12maxZ_2015 - temp12maxZ_2011,
          spei36 = spei36_2015 - spei36_2011,
          feelinputdecagr = feelinputdecagr_2015 - feelinputdecagr_2011,
          incdec_count = incdec_count_2015 - incdec_count_2011,
@@ -58,59 +60,55 @@ dd <- all %>%
          leisuretime = leisuretime_2015 - leisuretime_2011,
          npoor_z105 = npoor_z105_2015 - npoor_z105_2011,
          fivede = fivede_2015 - fivede_2011) %>%
-  select(hh_refno, admin1, admin2, temp12max, spei36, 
+  select(hh_refno, admin1, admin2, temp12maxZ, spei36, 
          feelinputdecagr, incdec_count, raiprod_any, jown_count, 
          jrightanyagr, credjanydec_any, speakpublic_any, groupmember_any, 
          leisuretime, npoor_z105, fivede)
 
-feelinputdecagr <- lmer(feelinputdecagr ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+feelinputdecagr <- lm(feelinputdecagr ~ spei36 + temp12maxZ, data=dd)
 summary(feelinputdecagr)
 
-incdec_count <- lmer(incdec_count ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+incdec_count <- lm(incdec_count ~ spei36 + temp12maxZ, data=dd)
 summary(incdec_count)
 
-raiprod_any <- lmer(raiprod_any ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+raiprod_any <- lm(raiprod_any ~ spei36 + temp12maxZ, data=dd)
 summary(raiprod_any)
 
-jown_count <- lmer(jown_count ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+jown_count <- lm(jown_count ~ spei36 + temp12maxZ, data=dd)
 summary(jown_count)
 
-jrightanyagr <- lmer(jrightanyagr ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+jrightanyagr <- lm(jrightanyagr ~ spei36 + temp12maxZ, data=dd)
 summary(jrightanyagr)
 
-credjanydec_any <- lmer(credjanydec_any ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+credjanydec_any <- lm(credjanydec_any ~ spei36 + temp12maxZ, data=dd)
 summary(credjanydec_any)
 
-speakpublic_any <- lmer(speakpublic_any ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+speakpublic_any <- lm(speakpublic_any ~ spei36 + temp12maxZ, data=dd)
 summary(speakpublic_any)
 
-groupmember_any <- lmer(groupmember_any ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+groupmember_any <- lm(groupmember_any ~ spei36 + temp12maxZ, data=dd)
 summary(groupmember_any)
 
-leisuretime <- lmer(leisuretime ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+leisuretime <- lm(leisuretime ~ spei36 + temp12maxZ, data=dd)
 summary(leisuretime)
 
-npoor_z105 <- lmer(npoor_z105 ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+npoor_z105 <- lm(npoor_z105 ~ spei36 + temp12maxZ, data=dd)
 summary(npoor_z105)
 
-fivede <- lmer(fivede ~ spei36 + temp12max + (1|admin1) + (1|admin2), data=dd)
+fivede <- lm(fivede ~ spei36 + temp12maxZ, data=dd)
 summary(fivede)
 
 allres <- data.frame()
-for (mod in c(feelinputdecagr, incdec_count, raiprod_any, jown_count, jrightanyagr,
+for (mod in list(feelinputdecagr, incdec_count, raiprod_any, jown_count, jrightanyagr,
               credjanydec_any, speakpublic_any, groupmember_any, leisuretime, npoor_z105,
               fivede)){
+
+  clean <- tidy(mod)
   
-  clean <- tidy(mod) %>%
-    filter(group=='fixed' & term != '(Intercept)') %>%
-    select(-group)
-  
-  clean$outcome <- gsub(' ~ spei36 + temp12max + (1 | admin1) + (1 | admin2)', '', as.character(mod@call)[2], fixed = T)
+  clean$outcome <- gsub(' ~ spei36 + temp12maxZ', '', as.character(mod$call)[2], fixed = T)
   
   allres <- bind_rows(allres, clean)
 }
-
-allres$pvalue <- dnorm(allres$statistic, 0, 1)
 
 lab1 <- data.frame(outcome=c("feelinputdecagr", 
                              "incdec_count", 
@@ -134,7 +132,7 @@ lab1 <- data.frame(outcome=c("feelinputdecagr",
                                  "Leisure",
                                  "Workload",
                                  "Five Domains of Empowerment"))
-lab2 <- data.frame(term=c('spei36', 'temp12max'),
+lab2 <- data.frame(term=c('spei36', 'temp12maxZ'),
                    term_lab=c('36-month Standardized Precipitation-Evapotranspiration Index (SPEI)',
                               'Maximum Temperature of Previous Year'))
 

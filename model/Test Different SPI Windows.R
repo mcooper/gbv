@@ -8,7 +8,7 @@ library(ordinal)
 
 options(stringsAsFactors=FALSE)
 
-gbv <- read_csv('GBV_all.csv') %>%
+gbv <- read.csv('GBV_all.csv') %>%
   mutate(gbv_year_bin = gbv_year != 'never',
          gbv_year = factor(gbv_year, levels = c('never', 'sometimes', 'often')),
          date_cmc_res = (date_cmc - mean(date_cmc))/sd(date_cmc),
