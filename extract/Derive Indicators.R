@@ -2,7 +2,7 @@ setwd('G://My Drive/DHS Processed')
 
 library(tidyverse)
 
-w2 <- read.csv('GBV_women_raw2.csv') %>%
+w <- read.csv('GBV_women_raw2.csv') %>%
   filter(v044_int == 1)
 
 ###################################
@@ -11,6 +11,7 @@ w2 <- read.csv('GBV_women_raw2.csv') %>%
 w$years_education <- w$v107_int
 w$years_education[is.na(w$years_education)] <- w$v107[is.na(w$years_education)]
 w$years_education[w$v106==0] <- 0
+w$years_education[w$years_education==99] <- NA
 
 ##################################
 #Participation in Decision Making
@@ -69,25 +70,19 @@ women <- w %>%
   select(code, date_cmc=v008, hh_code, 
          empowered_decisions, empowered_gbv_notok, gbv_year, years_education) %>%
   mutate(country=substr(code, 1, 2)) %>%
-  filter(!is.na(gbv_year))
+  filter(!is.na(gbv_year) & date_cmc <= 1404) %>%
+  na.omit
 
-temperature <- read.csv('GBV_Annual_Temp.csv') %>%
-  select(code, date_cmc=v008, latitude, longitude, running_mean, pre2000_Zscore, all_Zscore)
+spi <- read.csv('GBV_SPI.csv')
 
-spi <- read.csv('GBV_SPI.csv') %>%
-  select(-tmpcode)
-
-tmax <- read.csv('GBV_Max_Temps.csv') %>%
-  select(-tmpcode)
-
-weai <- read.csv('country_weai.csv')
+gbv_geo <- read.csv('GBV_geo.csv') %>%
+  select(code, latitude, longitude) %>%
+  unique
 
 wealth <- read.csv('hh_wealth_harmonized.csv') %>%
   select(hh_code, code, date_cmc=survey_cmc, wealth_factor_harmonized, hhsize)
 
-ltn <- read.csv('GBV_LTNs.csv') %>%
-  select(-tmpcode)
-
-all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, temperature, spi, tmax, wealth, weai, ltn))
+all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, spi, wealth, gbv_geo)) %>%
+  na.omit
 
 write.csv(all, 'GBV_all.csv', row.names=F)

@@ -3,39 +3,20 @@ setwd('G://My Drive/DHS Processed')
 library(tidyverse)
 library(ggplot2)
 
-gbv <- read.csv('GBV_all.csv')
+gbv <- read.csv('GBV_all.csv') %>%
+  mutate(gbv_year=ifelse(gbv_year=='never', "No", "Yes")) %>%
+  dplyr::select(gbv_year, spei24)
 
-spei <- gbv %>%
-  select(value=spei24, gbv_year) %>%
-  mutate(metric='spei24')
-
-temp <- gbv %>%
-  select(value=temp12monthZ, gbv_year) %>%
-  mutate(metric='temp12monthZ')
-
-comb <- bind_rows(spei, temp)
-
-comb$gbv_year <- factor(comb$gbv_year, levels = c('never', 'sometimes', 'often'))
-
-labels <- list(
-  "spei24"="24-Month Standardized\nPrecipitation-Evapotranspiration Index",
-  'temp12monthZ'='12-Month Average Monthly\nHigh Temperature Z-Score'
-)
-
-labeller <- function(variable, value){
-  return(labels[value])
-}
-
-ggplot(comb) + 
-  geom_histogram(aes(x=value, fill=gbv_year), binwidth=0.1) + 
-  facet_grid(.~metric, labeller=labeller) + 
-  scale_fill_manual(labels=c('Never', 'Sometimes', 'Often'),
-                    values=c('#8c96c6', '#8856a7', '#810f7c')) + 
+ggplot(gbv) + 
+  geom_histogram(aes(x=spei24, fill=gbv_year), binwidth=0.1) +
+  scale_fill_manual(labels=c('No', 'Yes'),
+                   values=c('#8c96c6', '#810f7c')) +
   theme_minimal() + 
-  labs(fill="Gender-Based\nViolence (GBV)") + xlab('') + ylab('')
-
+  labs(fill="Has Experienced\nGBV in the\nPrevious Year?") + 
+  xlab('24-Month Standardized Precipitation-Evapotranspiration Index') + 
+  ylab('Count')
 
 setwd('C://Users/matt/gbv-tex')
-ggsave('Histograms.pdf', width=7.5, height=3)
+ggsave('Histograms.pdf', width=6, height=4)
 system("pdfcrop Histograms.pdf Histograms.pdf")
 

@@ -27,11 +27,12 @@ badcoords <- unique(spna@coords)
 tmpcode <- apply(X = badcoords, MARGIN = 1, FUN = function(xy) codes@data@values[which.min(replace(distanceFromPoints(codes, xy), is.na(codes), NA))])
 badcoords <- cbind.data.frame(badcoords, tmpcode)
 spna <- merge(spna@data, badcoords)
-sp <- bind_rows(spna, sp@data[!is.na(sp@data$tmpcode), ])
+spnew <- bind_rows(spna, sp@data[!is.na(sp@data$tmpcode), ])
 
-rll <- sp %>% group_by(tmpcode) %>%
-  summarize(x=mean(longitude),
-            y=mean(latitude))
+rll <- rasterToPoints(codes) %>%
+   data.frame %>%
+   dplyr::select(x, y, tmpcode=layer) %>%
+   filter(tmpcode %in% spnew$tmpcode)
 
 #Read in precip data
 precip_vrt_file <- extension(rasterTmpFile(), 'ivrt')
@@ -59,7 +60,7 @@ extract <- function(vrt, x, y){
   
 }
 
-cl <- makeCluster(10, outfile = '')
+cl <- makeCluster(32, outfile = '')
 registerDoParallel(cl)
 
 df <- foreach(n=1:nrow(rll), .packages=c('raster', 'gdalUtils', 'SPEI', 'dplyr', 'zoo'), .combine=bind_rows) %dopar% {
@@ -75,9 +76,9 @@ df <- foreach(n=1:nrow(rll), .packages=c('raster', 'gdalUtils', 'SPEI', 'dplyr',
   
   s <- precip - PET
   
-  temp6 <- rollmean(tmax, k=6, fill=NA, na.rm=T, align='right')
-  temp12 <- rollmean(tmax, k=12, fill=NA, na.rm=T, align='right')
-  temp24 <- rollmean(tmax, k=24, fill=NA, na.rm=T, align='right')
+  temp6max <- rollmax(tmax, k=6, fill=NA, na.rm=T, align='right')
+  temp12max <- rollmax(tmax, k=12, fill=NA, na.rm=T, align='right')
+  temp24max <- rollmax(tmax, k=24, fill=NA, na.rm=T, align='right')
   
   interview <- data.frame(date_cmc=seq(973,1404),
                           
@@ -88,27 +89,36 @@ df <- foreach(n=1:nrow(rll), .packages=c('raster', 'gdalUtils', 'SPEI', 'dplyr',
                           spei36=as.numeric(spei(s, 36, na.rm=TRUE)$fitted),
                           spei48=as.numeric(spei(s, 48, na.rm=TRUE)$fitted),
                           
-                          #spi
-                          spi6=as.numeric(spi(precip, 6, na.rm=TRUE)$fitted),
-                          spi12=as.numeric(spi(precip, 12, na.rm=TRUE)$fitted),
-                          spi24=as.numeric(spi(precip, 24, na.rm=TRUE)$fitted),
-                          spi36=as.numeric(spi(precip, 36, na.rm=TRUE)$fitted),
-                          spi48=as.numeric(spi(precip, 48, na.rm=TRUE)$fitted),
-                          
                           #TempZ
-                          temp6monthZ=(temp6 - mean(temp6, na.rm=T))/sd(temp6, na.rm=T),
-                          temp12monthZ=(temp12 - mean(temp12, na.rm=T))/sd(temp12, na.rm=T),
-                          temp24monthZ=(temp24 - mean(temp24, na.rm=T))/sd(temp24, na.rm=T))
-  
-  spsel <- sp %>% 
+                          temp6maxZ=(temp6max - mean(temp6max, na.rm=T))/sd(temp6max, na.rm=T),
+                          temp12maxZ=(temp12max - mean(temp12max, na.rm=T))/sd(temp12max, na.rm=T),
+                          temp24maxZ=(temp24max - mean(temp24max, na.rm=T))/sd(temp24max, na.rm=T),
+						  
+						  #TempZ
+                          temp6max,
+                          temp12max,
+                          temp24max)
+  spsel <- spnew %>% 
     filter(tmpcode==rll$tmpcode[n]) %>%
     rename(date_cmc=v008) %>%
-    merge(interview, all.x=T, all.y=F)
+    merge(interview, all.x=T, all.y=F) %>%
+	mutate(mean_annual_precip=mean(precip, na.rm=T)*12,
+		   mean_annual_tmax=mean(tmax, na.rm=T),
+		   mean_annual_tmin=mean(tmin, na.rm=T)) %>%
+	dplyr::select(-tmpcode)
+
+  write.csv(spsel, paste0('~/climatedisk/SPItemp/', n), row.names=F)
 
   cat(n, round(n/nrow(rll)*100, 4), 'percent done\n') 
   
   spsel
 }
+
+setwd('~/climatedisk/SPItemp/')
+
+df <- list.files() %>%
+  lapply(FUN=read.csv, stringsAsFactors=FALSE) %>%
+  Reduce(bind_rows, x=.)
 
 write.csv(df, '~/GBV_SPI.csv', row.names=F)
 

@@ -15,11 +15,8 @@ sp <- readOGR('G://My Drive/DHS Spatial Covars/Global Codes and Shapefile',
 spt <- spTransform(sp, CRS("+proj=robin +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"))
 
 data <- read.csv('G://My Drive/DHS Processed/GBV_all.csv') %>%
-  select(latitude, longitude, hhsize, gbv_year, temp12monthZ, spei24, wealth_factor_harmonized) %>%
-  na.omit %>%
-  select(latitude, longitude, spei24) %>%
-  filter(!is.na(latitude) & !is.na(longitude) & !(latitude < 0.1 & latitude > -0.1 & longitude < 0.1 & longitude > -0.1)) %>%
-  unique
+  group_by(latitude, longitude) %>%
+  summarize(GBV_rate=mean(gbv_year!='never'))
 
 spdat <- SpatialPointsDataFrame(coords=data[ , c('longitude', 'latitude')],
                                 data=data, proj4string = CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
@@ -38,7 +35,7 @@ setwd('C://Users/matt/gbv-tex')
 #DHS Points
 ###################
 
-plt <- spplot(spdat_t, "spei24", 
+plt <- spplot(spdat_t, "GBV_rate", 
                col.regions = c("#780000", "#780000", "#780000"), 
                cex = 0.1, 
                sp.layout=list('sp.polygons', spt, fill="#DDDDDD"))
