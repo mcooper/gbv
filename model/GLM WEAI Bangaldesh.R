@@ -143,7 +143,7 @@ dat <- Reduce(merge, list(allres, lab1)) %>%
          `Test Statistic`=statistic, `P-Value`=p.value, ` `=Significance)
 
 print(xtable(dat,
-             caption='Association between changes in SPEI and changes in various indicators of empowerment.  Because mutiple hypotheses were tested, p-values shown have been Bonferroni corrected. *** p \\textless 0.001, ** p \\textless 0.01, * p \\textless 0.05.',
+             caption='Association between changes in SPEI and changes in various indicators of empowerment.  Because mutiple hypotheses were tested, the stars for p-values shown have been Bonferroni corrected. ***\\textit{p} \\textless 0.001, **\\textit{p} \\textless 0.01, *\\textit{p} \\textless 0.05.',
              label='tab:WEAI',
              align='llrrrrl',
              digits=c(0, 0, 3, 3, 3, 4, 0)),

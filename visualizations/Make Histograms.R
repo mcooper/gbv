@@ -17,6 +17,6 @@ ggplot(gbv) +
   ylab('Count')
 
 setwd('C://Users/matt/gbv-tex')
-ggsave('Histograms.pdf', width=6, height=4)
+ggsave('Histograms.pdf', width=6, height=3)
 system("pdfcrop Histograms.pdf Histograms.pdf")
 
