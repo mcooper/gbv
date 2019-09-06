@@ -42,8 +42,8 @@ for coord in dat.reset_index().iterrows():
 		os.system('~/telegram.sh "Too many Bad Coords"')
 		break
 
-
 os.system('~/telegram.sh "Done running EE"')
 
+final = pd.DataFrame(res)
 
-
+final.to_csv('~/DHS_ghsl.csv')
