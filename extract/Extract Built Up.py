@@ -46,4 +46,4 @@ os.system('~/telegram.sh "Done running EE"')
 
 final = pd.DataFrame(res)
 
-final.to_csv('~/DHS_ghsl.csv')
+final.to_csv('~/DHS_ghsl.csv', index=False)
