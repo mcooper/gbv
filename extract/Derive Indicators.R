@@ -61,6 +61,36 @@ w$gbv_year_sometimes[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)]
 w$gbv_year <- ifelse(w$gbv_year_often, "often", 
                      ifelse(w$gbv_year_sometime, "sometimes", "never"))
 
+#########################
+#Sexual Violence
+#########################
+
+#######################
+#Physical Violence - Just by husband (IPV)
+#########################
+vars <- c('d105a_int', 'd105b_int', 'd105c_int', 'd105d_int', 'd105e_int', 'd105f_int', 'd105g_int', 'd105j_int', 'd117a_int')
+w$gbv_year_often <- rowSums(w[ , vars]==1, na.rm=T) > 0
+w$gbv_year_often[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
+
+w$gbv_year_sometimes <- rowSums(w[ , vars]==2, na.rm=T) > 0
+w$gbv_year_sometimes[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
+
+w$ipv_year <- ifelse(w$gbv_year_often, "often", 
+                     ifelse(w$gbv_year_sometime, "sometimes", "never"))
+
+#######################
+#Sexual Violence - Just by husband (IPV)
+#########################
+vars <- c('d105a_int', 'd105b_int', 'd105c_int', 'd105d_int', 'd105e_int', 'd105f_int', 'd105g_int', 'd105j_int', 'd117a_int')
+w$gbv_year_often <- rowSums(w[ , vars]==1, na.rm=T) > 0
+w$gbv_year_often[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
+
+w$gbv_year_sometimes <- rowSums(w[ , vars]==2, na.rm=T) > 0
+w$gbv_year_sometimes[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
+
+w$ipv_year <- ifelse(w$gbv_year_often, "often", 
+                     ifelse(w$gbv_year_sometime, "sometimes", "never"))
+
 
 ##################################
 #Get rates by DHS site & combine

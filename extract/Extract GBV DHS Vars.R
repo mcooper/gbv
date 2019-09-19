@@ -1,19 +1,19 @@
-setwd('G://My Drive/DHS New')
+setwd('~/mortalityblob/dhsraw')
 
 library(haven)
 library(tidyverse)
 library(foreign)
 
-gbv_vars <- read.csv('C:/Users/matt/gbv/scope/gbv_codes.csv', stringsAsFactors = F)
+gbv_vars <- read.csv('../dhs/gbv_codes.csv', stringsAsFactors = F)
 
-files <- read.csv('C:/Users/matt/gbv/scope/scoped_vars.csv', stringsAsFactors = F) %>%
+files <- read.csv('../dhs/scoped_vars.csv', stringsAsFactors = F) %>%
   filter(!is.na(ge) & !is.na(v044)) %>%
-  select(num, cc, subversion, ir, mr, ge)
+  select(num, cc, subversion, ir, ge)
 
 ir_vars <- gbv_vars$label[gbv_vars$file=='IR']
 
 women <- data.frame()
-for (i in 149:nrow(files)){
+for (i in 1:nrow(files)){
   
   #Get Women's Data
   ir_dat <- read_dta(files$ir[i])
@@ -64,15 +64,20 @@ for (i in 149:nrow(files)){
 
 }
 
-setwd('G://My Drive/DHS Processed')
+setwd('../dhs/')
 
 women <- women %>%
   mutate(country = substr(code, 1, 2),
          v008 = ifelse(country=='NP', v008 - 681, v008))
 
-write.csv(women, 'GBV_women_raw2.csv', row.names=F)
+write.csv(women, 'GBV_women_raw.csv', row.names=F)
 
 geo <- women %>% select(latitude, longitude, code, v008) %>%
   unique
 
 write.csv(geo, 'GBV_geo.csv', row.names=F)
+
+system('~/telegram.sh "Done with DHS Extraction"')
+
+
+

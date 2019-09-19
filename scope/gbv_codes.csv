@@ -1,29 +1,35 @@
-label,file,variable,Experience of Physical Violence,Indicators of Women's Empowerment,Participation in Decision Making 1
-d005,IR,violence weight,TRUE,,
-d105a,IR,ever pushed,TRUE,,
-d105b,IR,ever slapped,TRUE,,
-d105c,IR,ever punched,TRUE,,
-d105d,IR,ever kicked,TRUE,,
-d105e,IR,ever strangled,TRUE,,
-d105f,IR,ever threatened with weapon,TRUE,,
-d105g,IR,ever CS physical violence,TRUE,,
-d105j,IR,ever had arm twisted or hair pulled,TRUE,,
-v501,IR,in union,TRUE,,
-v044,IR,selected for domestic violence module,TRUE,,
-d115y,IR,no one other than husband ever hurt,TRUE,,
-d117a,IR,frequency of hit in last 12 motnhs,TRUE,,
-v005,IR,womens sample weight,,TRUE,TRUE
-v743a,IR,who should have greater say in womens health care,,TRUE,TRUE
-v743b,IR,who should have greater sasy in large household purchases,,TRUE,TRUE
-v743d,IR,who decides on visits to family or relatives,,TRUE,TRUE
-v744a,IR,gbv justified if wife argues,,TRUE,
-v744b,IR,gbv justified if wife neglects children,,TRUE,
-v744c,IR,gbv justified if wife goes out without telling husband,,TRUE,
-v744d,IR,gbv justified if wife refuses sex with husband,,TRUE,
-v744e,IR,gbv justified if wife burs food,,TRUE,
-mv744a,MR,gbv justified if wife argues,,,
-mv744b,MR,gbv justified if wife neglects children,,,
-mv744c,MR,gbv justified if wife goes out without telling husband,,,
-mv744d,MR,gbv justified if wife refuses sex with husband,,,
-mv744e,MR,gbv justified if wife burs food,,,
-mv150,MR,if household head,,,
+label,file,variable
+d005,IR,violence weight
+d105a,IR,ever pushed
+d105b,IR,ever slapped
+d105c,IR,ever punched
+d105d,IR,ever kicked
+d105e,IR,ever strangled
+d105f,IR,ever threatened with weapon
+d105g,IR,ever CS physical violence
+d105j,IR,ever had arm twisted or hair pulled
+d105h,IR,ever forced into unwated sex
+d105i,IR,Ever forced into other unwanted sex act
+d105k,IR,ever physically forced to perform sex acts
+v501,IR,in union
+v502,IR,currently or formerly married
+v044,IR,selected for domestic violence module
+d115y,IR,no one other than husband ever hurt
+d117a,IR,frequency of hit in last 12 motnhs
+v005,IR,womens sample weight
+v743a,IR,who should have greater say in womens health care
+v743b,IR,who should have greater sasy in large household purchases
+v743d,IR,who decides on visits to family or relatives
+v744a,IR,gbv justified if wife argues
+v744b,IR,gbv justified if wife neglects children
+v744c,IR,gbv justified if wife goes out without telling husband
+v744d,IR,gbv justified if wife refuses sex with husband
+v744e,IR,gbv justified if wife burs food
+v511,IR,age at first union
+v525,IR,age at first intercourse
+mv744a,MR,gbv justified if wife argues
+mv744b,MR,gbv justified if wife neglects children
+mv744c,MR,gbv justified if wife goes out without telling husband
+mv744d,MR,gbv justified if wife refuses sex with husband
+mv744e,MR,gbv justified if wife burs food
+mv150,MR,if household head
