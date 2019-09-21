@@ -12,12 +12,10 @@ library(raster)
 library(cowplot)
 library(RColorBrewer)
 
-gbv <- read.csv('GBV_all.csv', stringsAsFactors=F)
-
-gbv$gbv_year <- gbv$gbv_year != 'never'
+gbv <- read.csv('GBV_all.csv', stringsAsFactors=F) %>%
+  filter(builtup < 0.1 & !is.infinite(spei36))
 
 gbv$surveycode <- substr(gbv$code, 1, 6)
-
 
 #############################
 #Model
@@ -27,17 +25,19 @@ for (i in unique(gbv$country)){
   sel <- gbv %>%
     filter(country == i)
   
-  mod_spi <- glm(gbv_year ~ years_education +
-                   wealth_factor_harmonized + hhsize + date_cmc +
-                   mean_annual_precip + mean_annual_tmax + spei24,
-                 data=sel, family = 'binomial')
-
-  res <- tidy(mod_spi) %>%
-    filter(term=='spei24')
-  res$country <- i
-  res$n <- nrow(sel)
-  res$surveys <- length(unique(sel$surveycode))
-  mod1 <- bind_rows(mod1, res)
+  try({
+    mod_spi <- glm(viol_phys_ip ~ years_education +
+                     wealth_factor_harmonized + hhsize + date_cmc +
+                     mean_annual_precip + mean_annual_tmax + spei36,
+                   data=sel, family = 'binomial')
+  
+    res <- tidy(mod_spi) %>%
+      filter(grepl('spei', term))
+    res$country <- i
+    res$n <- nrow(sel)
+    res$surveys <- length(unique(sel$surveycode))
+    mod1 <- bind_rows(mod1, res)
+  })
   
   print(i)
 }

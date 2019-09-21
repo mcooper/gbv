@@ -5,67 +5,90 @@ library(parallel)
 #Note, for some reason, bam() does NOT work with tidyverse and read_csv()
 #MUST use dplyr and read.csv()
 
-dat <- read.csv('/home/mattcoop/mortalityblob/dhs/GBV_all.csv')
+dat <- read.csv('~/../mattcoop/mortalityblob/dhs/GBV_all.csv')
 
 dat <- dat %>%
   filter(!is.infinite(spei36) & !is.infinite(spei48))
 
-dat$gbv_year <- dat$gbv_year != 'never'
+dat$vio_any <- dat$viol_phys_nip | dat$viol_phys_ip | dat$viol_sex_ip
 
-dat$empowered_decisions <- as.factor(dat$empowered_decisions)
-dat$empowered_gbv_notok <- as.factor(dat$empowered_gbv_notok)
-dat$urban <- as.factor(dat$builtup > 0.1)
-
-cl <- makeCluster(8)
+cl <- makeCluster(12)
 
 ##########################
 #SPEI24
 ###########################
 
-spei24_ac <- bam(gbv_year ~ s(spei24) + s(latitude, longitude, bs='sos') + 
+spei24_viol_phys_nip <- bam(viol_phys_nip ~ s(spei24) + s(latitude, longitude, bs='sos') + 
                    mean_annual_precip + mean_annual_tmax + 
              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
              country, data=dat, family = 'binomial', cluster=cl)
-save(spei24_ac, file = '/home/mattcoop/mortalityblob/gbv_gams/spei24_ac.Rdata')
-rm(spei24_ac)
+save(spei24_viol_phys_nip, file = '/home/mattcoop/mortalityblob/gbv_gams/spei24_viol_phys_nip.Rdata')
+rm(spei24_viol_phys_nip)
 
-spei24_ac_vc <- bam(gbv_year ~ s(latitude, longitude, by=spei24) + s(latitude, longitude, bs='sos') + mean_annual_precip + mean_annual_tmax + 
-                    wealth_factor_harmonized + hhsize + date_cmc + years_education + 
-                    country, data=dat, family = 'binomial', cluster=cl)
-save(spei24_ac_vc, file = '/home/mattcoop/mortalityblob/gbv_gams/spei24_ac_vc.Rdata')
-rm(spei24_ac_vc)
 
-spei24_ac_vc_fe <- bam(gbv_year ~ s(spei24) + s(latitude, longitude, by=spei24) + s(latitude, longitude, bs='sos') + mean_annual_precip + mean_annual_tmax + 
-                      wealth_factor_harmonized + hhsize + date_cmc + years_education + 
-                      country, data=dat, family = 'binomial', cluster=cl)
-save(spei24_ac_vc_fe, file = '/home/mattcoop/mortalityblob/gbv_gams/spei24_ac_vc_fe.Rdata')
-rm(spei24_ac_vc_fe)
+spei24_viol_phys_ip <- bam(viol_phys_ip ~ s(spei24) + s(latitude, longitude, bs='sos') + 
+                   mean_annual_precip + mean_annual_tmax + 
+                   wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+                   country, data=dat, family = 'binomial', cluster=cl)
+save(spei24_viol_phys_ip, file = '/home/mattcoop/mortalityblob/gbv_gams/spei24_viol_phys_ip_ac.Rdata')
+rm(spei24_viol_phys_ip)
+
+
+spei24_viol_sex_ip <- bam(viol_sex_ip ~ s(spei24) + s(latitude, longitude, bs='sos') + 
+                   mean_annual_precip + mean_annual_tmax + 
+                   wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+                   country, data=dat, family = 'binomial', cluster=cl)
+save(spei24_viol_sex_ip, file = '/home/mattcoop/mortalityblob/gbv_gams/spei24_viol_sex_ip.Rdata')
+rm(spei24_viol_sex_ip)
+
+
+spei24_viol_any <- bam(viol_any ~ s(spei24) + s(latitude, longitude, bs='sos') + 
+                            mean_annual_precip + mean_annual_tmax + 
+                            wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+                            country, data=dat, family = 'binomial', cluster=cl)
+save(spei24_viol_any, file = '/home/mattcoop/mortalityblob/gbv_gams/spei24_viol_any.Rdata')
+rm(spei24_viol_any)
+
 
 system('~/telegram.sh "Done with SPEI splines"')
 
+
 ##########################
-#Temperature
+#temp12maxZ
 ###########################
 
-tempZ_ac <- bam(gbv_year ~ s(temp12maxZ) + s(latitude, longitude, bs='sos') + mean_annual_precip + mean_annual_tmax + 
-                   wealth_factor_harmonized + hhsize + date_cmc + years_education + 
-                   country, data=dat, family = 'binomial', cluster=cl)
-save(tempZ_ac, file = '/home/mattcoop/mortalityblob/gbv_gams/tempZ_ac.Rdata')
-rm(tempZ_ac)
+temp12maxZ_viol_phys_nip <- bam(viol_phys_nip ~ s(temp12maxZ) + s(latitude, longitude, bs='sos') + 
+                              mean_annual_precip + mean_annual_tmax + 
+                              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+                              country, data=dat, family = 'binomial', cluster=cl)
+save(temp12maxZ_viol_phys_nip, file = '/home/mattcoop/mortalityblob/gbv_gams/temp12maxZ_viol_phys_nip.Rdata')
+rm(temp12maxZ_viol_phys_nip)
 
-tempZ_ac_vc <- bam(gbv_year ~ s(latitude, longitude, by=temp12maxZ) + s(latitude, longitude, bs='sos') + mean_annual_precip + mean_annual_tmax + 
-                      wealth_factor_harmonized + hhsize + date_cmc + years_education + 
-                      country, data=dat, family = 'binomial', cluster=cl)
-save(tempZ_ac_vc, file = '/home/mattcoop/mortalityblob/gbv_gams/tempZ_ac_vc.Rdata')
-rm(tempZ_ac_vc)
 
-tempZ_ac_vc_fe <- bam(gbv_year ~ s(temp12maxZ) + s(latitude, longitude, by=temp12maxZ) + s(latitude, longitude, bs='sos') + mean_annual_precip + mean_annual_tmax + 
+temp12maxZ_viol_phys_ip <- bam(viol_phys_ip ~ s(temp12maxZ) + s(latitude, longitude, bs='sos') + 
+                             mean_annual_precip + mean_annual_tmax + 
+                             wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+                             country, data=dat, family = 'binomial', cluster=cl)
+save(temp12maxZ_viol_phys_ip, file = '/home/mattcoop/mortalityblob/gbv_gams/temp12maxZ_viol_phys_ip.Rdata')
+rm(temp12maxZ_viol_phys_ip)
+
+
+temp12maxZ_viol_sex_ip <- bam(viol_sex_ip ~ s(temp12maxZ) + s(latitude, longitude, bs='sos') + 
+                            mean_annual_precip + mean_annual_tmax + 
+                            wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+                            country, data=dat, family = 'binomial', cluster=cl)
+save(temp12maxZ_viol_sex_ip, file = '/home/mattcoop/mortalityblob/gbv_gams/temp12maxZ_viol_sex_ip.Rdata')
+rm(temp12maxZ_viol_sex_ip)
+
+
+temp12maxZ_viol_any <- bam(viol_any ~ s(temp12maxZ) + s(latitude, longitude, bs='sos') + 
+                         mean_annual_precip + mean_annual_tmax + 
                          wealth_factor_harmonized + hhsize + date_cmc + years_education + 
                          country, data=dat, family = 'binomial', cluster=cl)
-save(tempZ_ac_vc_fe, file = '/home/mattcoop/mortalityblob/gbv_gams/tempZ_ac_vc_fe.Rdata')
-rm(tempZ_ac_vc_fe)
+save(temp12maxZ_viol_any, file = '/home/mattcoop/mortalityblob/gbv_gams/temp12maxZ_viol_any.Rdata')
+rm(temp12maxZ_viol_any)
 
-system('~/telegram.sh "Done with Temp splines"')
+
 
 ##########################
 #Temperature No CO

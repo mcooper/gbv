@@ -68,7 +68,8 @@ setwd('../dhs/')
 
 women <- women %>%
   mutate(country = substr(code, 1, 2),
-         v008 = ifelse(country=='NP', v008 - 681, v008))
+         v008 = ifelse(country=='NP', v008 - 681, v008)) %>%
+  filter(!(latitude < 1 & latitude > -1 & longitude < 1 & longitude > -1))
 
 write.csv(women, 'GBV_women_raw.csv', row.names=F)
 

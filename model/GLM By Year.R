@@ -8,8 +8,6 @@ library(ggplot2)
 
 gbv <- read.csv('GBV_all.csv', stringsAsFactors=F)
 
-gbv$gbv_year <- gbv$gbv_year != 'never'
-
 gbv$surveycode <- substr(gbv$code, 1, 6)
 
 gbv <- gbv %>%
@@ -22,12 +20,12 @@ for (y in unique(gbv$year)){
   sel <- gbv %>% filter(year==y)
   
   if (length(unique(sel$country)) > 1){
-    mod_spi <- glm(gbv_year ~ spei24 + years_education + date_cmc + 
+    mod_spi <- glm(viol_phys_ip ~ spei24 + years_education + date_cmc + 
                      wealth_factor_harmonized + hhsize + country + 
                      mean_annual_precip + mean_annual_tmax + spei24, 
                    data=sel, family = 'binomial')
   } else{
-    mod_spi <- glm(gbv_year ~ spei24 + years_education + date_cmc + 
+    mod_spi <- glm(viol_phys_ip ~ spei24 + years_education + date_cmc + 
                      wealth_factor_harmonized + hhsize + 
                      mean_annual_precip + mean_annual_tmax + spei24, 
                    data=sel, family = 'binomial')
