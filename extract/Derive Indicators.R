@@ -8,10 +8,10 @@ w <- read.csv('GBV_women_raw.csv') %>%
 ###################################
 #Education
 ##################################
-w$years_education <- w$v107_int
-w$years_education[is.na(w$years_education)] <- w$v107[is.na(w$years_education)]
-w$years_education[w$v106_int==0] <- 0
-w$years_education[w$years_education==99] <- NA
+w$years_education <- ifelse(w$v106_int == 0, "None",
+                            ifelse(w$v106_int == 1, "Primary", 
+                                   ifelse(w$v106_int == 2, "Secondary", 
+                                          ifelse(w$v106_int == 3, "Higher", NA))))
 
 ##################################
 #Participation in Decision Making
