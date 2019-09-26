@@ -7,32 +7,29 @@ library(MASS)
 
 options(stringsAsFactors=FALSE)
 
-gbv <- read.csv('GBV_all.csv') %>%
-  mutate(surveycode=substr(code, 1, 6),
-         mean_annual_precip=mean_annual_precip*1000,
-         mean_annual_tmax=mean_annual_tmax*10) %>%
-  na.omit %>%
-  filter(!is.infinite(spei36) & !is.infinite(spei48))
+gbv <- read.csv('GBV_all.csv')
+
+gbv$viol_any <- gbv$viol_sex | gbv$viol_phys
 
 ############################
 #Binary Logit
 ########################
-modspei12 <- glm(viol_phys_ip  ~ years_education + 
+modspei12 <- glm(viol_any  ~ years_education + 
                    wealth_factor_harmonized + hhsize + date_cmc + country + 
                    mean_annual_precip + mean_annual_tmax + spei12, 
                  data=gbv, family = 'binomial')
 
-modspei24 <- glm(viol_phys_ip  ~ years_education +
+modspei24 <- glm(viol_any ~ years_education +
                    wealth_factor_harmonized + hhsize + date_cmc + country + 
                    mean_annual_precip + mean_annual_tmax + spei24, 
                  data=gbv, family = 'binomial')
 
-modspei36 <- glm(viol_phys_ip  ~ years_education + 
+modspei36 <- glm(viol_any ~ years_education + 
                    wealth_factor_harmonized + hhsize + date_cmc + country + 
                    mean_annual_precip + mean_annual_tmax + spei36, 
                  data=gbv, family = 'binomial')
 
-modspei48 <- glm(viol_phys_ip  ~ years_education + 
+modspei48 <- glm(viol_any ~ years_education + 
                    wealth_factor_harmonized + hhsize + date_cmc + country + 
                    mean_annual_precip + mean_annual_tmax + spei48, 
                  data=gbv, family = 'binomial')

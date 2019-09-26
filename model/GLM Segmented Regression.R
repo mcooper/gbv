@@ -3,8 +3,7 @@ setwd('G://My Drive/DHS Processed')
 library(tidyverse)
 library(broom)
 
-gbv <- read.csv('GBV_all.csv') %>%
-  filter(!is.infinite(spei36) & !is.infinite(spei48))
+gbv <- read.csv('GBV_all.csv')
 
 all <- data.frame()
 for (var in c('spei12', 'spei24', 'spei36', 'spei48', 'temp12maxZ')){
@@ -14,7 +13,7 @@ for (var in c('spei12', 'spei24', 'spei36', 'spei48', 'temp12maxZ')){
     
     sel <- gbv %>% filter(cut == lvl)
     
-    mod <- glm(as.formula(paste0('viol_phys_ip  ~ years_education + 
+    mod <- glm(as.formula(paste0('viol_phys  ~ years_education + 
                  wealth_factor_harmonized + hhsize + date_cmc + country + 
                  mean_annual_precip + mean_annual_tmax + ', var)), 
                data=sel, family = 'binomial')

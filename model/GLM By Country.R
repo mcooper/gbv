@@ -13,7 +13,9 @@ library(cowplot)
 library(RColorBrewer)
 
 gbv <- read.csv('GBV_all.csv', stringsAsFactors=F) %>%
-  filter(builtup < 0.1 & !is.infinite(spei36))
+  filter(mean_annual_precip > 200 & builtup < 0.05)
+
+gbv$viol_any <- gbv$viol_phys | gbv$viol_sex
 
 gbv$surveycode <- substr(gbv$code, 1, 6)
 
@@ -26,9 +28,9 @@ for (i in unique(gbv$country)){
     filter(country == i)
   
   try({
-    mod_spi <- glm(viol_phys_ip ~ years_education +
+    mod_spi <- glm(viol_any ~ years_education +
                      wealth_factor_harmonized + hhsize + date_cmc +
-                     mean_annual_precip + mean_annual_tmax + spei36,
+                     mean_annual_precip + mean_annual_tmax + spei24,
                    data=sel, family = 'binomial')
   
     res <- tidy(mod_spi) %>%
