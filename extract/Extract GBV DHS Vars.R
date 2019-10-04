@@ -7,7 +7,9 @@ library(foreign)
 gbv_vars <- read.csv('../dhs/gbv_codes.csv', stringsAsFactors = F)
 
 files <- read.csv('../dhs/scoped_vars.csv', stringsAsFactors = F) %>%
-  filter(!is.na(ge) & !is.na(v044)) %>%
+  filter(!is.na(ge) & !is.na(v044) & !is.na(d105a)) %>%
+  arrange(cc, num, subversion) %>%
+  filter(!duplicated(paste0(cc, num, subversion), fromLast=T)) %>% #Important: remove old versions of same survey!!
   select(num, cc, subversion, ir, ge)
 
 ir_vars <- gbv_vars$label[gbv_vars$file=='IR']
@@ -20,7 +22,7 @@ for (i in 1:nrow(files)){
   
   print(paste0(round(i/nrow(files), 3)*100, '% on ', files$cc[i], '-', files$num[i], '-', files$subversion[i]))
   
-  ir_dat_sel <- ir_dat[ , c(ir_vars[ir_vars %in% names(ir_dat)], "v001", "v002", "v003", "v034", "v006", "v008", "v106", "v107")]
+  ir_dat_sel <- ir_dat[ , c(ir_vars[ir_vars %in% names(ir_dat)], "caseid", "v001", "v002", "v003", "v034", "v006", "v008", "v106", "v107")]
   for (n in c(ir_vars[ir_vars %in% names(ir_dat_sel)], "v106", "v107")){
     if (class(ir_dat_sel[ , n, drop=TRUE])=='haven_labelled'){
       ir_dat_sel[ , paste0(n, '_chr')] <- as.character(as_factor(ir_dat_sel[ , n, drop=TRUE]))

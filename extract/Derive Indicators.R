@@ -1,4 +1,4 @@
-setwd('G://My Drive/DHS Processed')
+setwd('~/mortalityblob/dhs/')
 
 library(tidyverse)
 
@@ -36,11 +36,11 @@ w$empowered_decisions[apply(X=is.na(w[ , c('v743a_int', 'v743b_int', 'v743d_int'
 ##################################
 
 ## Women
-w$gbv_notok_burnedfood <- w$v744e_int != 1 | w$v744e != 1
-w$gbv_notok_arguing <- w$v744c_int != 1 | w$v744e != 1
-w$gbv_notok_goingout <- w$v744a_int != 1 | w$v744e != 1
-w$gbv_notok_neglectingkids <- w$v744b_int != 1 | w$v744e != 1
-w$gbv_notok_refusingsex <- w$v744d_int != 1 | w$v744e != 1
+w$gbv_notok_burnedfood <- w$v744e_int != 1
+w$gbv_notok_arguing <- w$v744c_int != 1
+w$gbv_notok_goingout <- w$v744a_int != 1
+w$gbv_notok_neglectingkids <- w$v744b_int != 1
+w$gbv_notok_refusingsex <- w$v744d_int != 1
 
 vars <- c('gbv_notok_burnedfood', 'gbv_notok_arguing', 'gbv_notok_goingout', 'gbv_notok_neglectingkids', 'gbv_notok_refusingsex')
 w$empowered_gbv_notok <- apply(X=w[ , vars], MARGIN = 1, FUN = all, na.rm=T)
@@ -129,3 +129,4 @@ all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, spi, wea
 all <- all %>% filter(!is.infinite(spei36) & !is.infinite(spei48))
 
 write.csv(all, 'GBV_all.csv', row.names=F)
+

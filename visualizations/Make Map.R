@@ -15,8 +15,9 @@ sp <- readOGR('G://My Drive/DHS Spatial Covars/Global Codes and Shapefile',
 spt <- spTransform(sp, CRS("+proj=robin +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"))
 
 data <- read.csv('G://My Drive/DHS Processed/GBV_all.csv') %>%
+  filter(mean_annual_precip > 200 & builtup < 0.1) %>%
   group_by(latitude, longitude) %>%
-  summarize(GBV_rate=mean(gbv_year!='never'))
+  summarize(GBV_rate=mean(viol_phys))
 
 spdat <- SpatialPointsDataFrame(coords=data[ , c('longitude', 'latitude')],
                                 data=data, proj4string = CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))

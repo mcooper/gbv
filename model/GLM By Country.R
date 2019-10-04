@@ -11,6 +11,9 @@ library(ggplot2)
 library(raster)
 library(cowplot)
 library(RColorBrewer)
+library(fields)
+library(ape)
+library(mgcv)
 
 gbv <- read.csv('GBV_all.csv', stringsAsFactors=F) %>%
   filter(mean_annual_precip > 200 & builtup < 0.05)
@@ -28,7 +31,7 @@ for (i in unique(gbv$country)){
     filter(country == i)
   
   try({
-    mod_spi <- glm(viol_any ~ years_education +
+    mod_spi <- glm(viol_phys ~ years_education +
                      wealth_factor_harmonized + hhsize + date_cmc +
                      mean_annual_precip + mean_annual_tmax + spei24,
                    data=sel, family = 'binomial')
@@ -63,7 +66,6 @@ spnew <- crop(spnew, extent(-100, 135, -60, 55))
 
 spnew@data$id <- rownames(spnew@data)
 
-
 spf <- fortify(spnew, region='id')
 spf$rownum <- 1:nrow(spf)
 
@@ -76,7 +78,7 @@ map <- ggplot() +
   geom_polygon(data=spf2, aes(x=long, y=lat, group=group, fill=estimate), color="#000000") + 
   geom_polygon(data=spf2, aes(x=long, y=lat, group=group, size=border), fill="transparent", color="#000000") + 
   scale_fill_gradient2(low='#d7191c', high='#2c7bb6', mid = '#ffffbf', midpoint=0, na.value = "#888888") + 
-  scale_size_manual(values=c(Significant=1, Insignficant=0.4)) + 
+  scale_size_manual(values=c(Significant=1.25, Insignficant=0.4)) + 
   guides(fill=FALSE, color=FALSE, size=FALSE) + 
   theme_void() +
   scale_x_continuous(expand = c(0, 0)) +
@@ -88,7 +90,7 @@ convert <- function(x){
 }
 
 legend <- ggplot(mod1) + 
-  geom_histogram(aes(x=estimate, fill=..x..), bins=20, color='#000000') + 
+  geom_histogram(aes(x=estimate, fill=..x..), bins=25, color='#000000') + 
   scale_fill_gradient2(low='#d7191c', high='#2c7bb6', mid = '#ffffbf', midpoint=0)  +
   theme(panel.background = element_rect(fill = "transparent"), 
         plot.background = element_rect(fill = "transparent", color = NA), 
@@ -106,4 +108,18 @@ ggdraw() +
   draw_plot(map, 0, 0, 1, 1) +
   draw_plot(legend, 0.5, 0, 0.45, 0.45)
 
-ggsave('C://Users/matt/gbv-tex/Map.pdf', width=10, height=5)
+#ggsave('C://Users/matt/gbv-tex/Map.pdf', width=10, height=5)
+
+###########################
+#Moran's I Test
+##########################
+
+sp_sel <- spnew[!is.na(spnew@data$estimate), ]
+
+centroids <- getSpPPolygonsLabptSlots(sp_sel)
+
+distmat <- rdist.earth(centroids, centroids, miles=FALSE)
+inv.distmat <- 1/distmat
+diag(inv.distmat) <- 0
+
+Moran.I(sp_sel@data$estimate, inv.distmat)

@@ -7,32 +7,49 @@ library(MASS)
 
 options(stringsAsFactors=FALSE)
 
-gbv <- read.csv('GBV_all.csv')
+gbv <- read.csv('GBV_all.csv') %>%
+  filter(mean_annual_precip > 200 & builtup < 0.1)
 
-gbv$viol_any <- gbv$viol_sex | gbv$viol_phys
 
 ############################
 #Binary Logit
 ########################
-modspei12 <- glm(viol_any  ~ years_education + 
+modspei12 <- glm(viol_sex  ~ years_education + 
                    wealth_factor_harmonized + hhsize + date_cmc + country + 
-                   mean_annual_precip + mean_annual_tmax + spei12, 
+                   mean_annual_precip + mean_annual_tmax + spei12 + spei12^2, 
                  data=gbv, family = 'binomial')
 
-modspei24 <- glm(viol_any ~ years_education +
+modspei24 <- glm(viol_sex ~ years_education +
                    wealth_factor_harmonized + hhsize + date_cmc + country + 
-                   mean_annual_precip + mean_annual_tmax + spei24, 
+                   mean_annual_precip + mean_annual_tmax + spei24 + spei24^2, 
                  data=gbv, family = 'binomial')
 
-modspei36 <- glm(viol_any ~ years_education + 
+modspei36 <- glm(viol_sex ~ years_education + 
                    wealth_factor_harmonized + hhsize + date_cmc + country + 
-                   mean_annual_precip + mean_annual_tmax + spei36, 
+                   mean_annual_precip + mean_annual_tmax + spei36 + spei36^2, 
                  data=gbv, family = 'binomial')
 
-modspei48 <- glm(viol_any ~ years_education + 
+modspei48 <- glm(viol_sex ~ years_education + 
                    wealth_factor_harmonized + hhsize + date_cmc + country + 
-                   mean_annual_precip + mean_annual_tmax + spei48, 
+                   mean_annual_precip + mean_annual_tmax + spei48 + spei48^2, 
                  data=gbv, family = 'binomial')
+
+modtemp12max <- glm(viol_sex ~ years_education + 
+                   wealth_factor_harmonized + hhsize + date_cmc + country + 
+                   mean_annual_precip + mean_annual_tmax + temp12max + temp12max^2, 
+                 data=gbv, family = 'binomial')
+
+modtemp12maxZ <- glm(viol_sex ~ years_education + 
+                   wealth_factor_harmonized + hhsize + date_cmc + country + 
+                   mean_annual_precip + mean_annual_tmax + temp12maxZ + temp12maxZ^2, 
+                 data=gbv, family = 'binomial')
+
+AIC(modspei12)
+AIC(modspei24)
+AIC(modspei36)
+AIC(modspei48)
+AIC(modtemp12max)
+AIC(modtemp12maxZ)
 
 getORcoef <- function(mod){
   return(exp(mod$coefficients))
