@@ -9,7 +9,7 @@ load('spei36_phys_empowered_education.Rdata') #OK
 load('spei36_phys_empowered_decisions.Rdata')
 load('spei36_phys_empowered_gbv_notok.Rdata')
 
-
+#Of course education didnt work, we already controlled for that!!
 
 ##############################
 #Make Graphs of Effects
@@ -30,7 +30,7 @@ getData <- function(mod, data, emp, lab){
                                 se=se.emp,
                                 metric=lab,
                                 empowered=data[ , emp]),
-                     data.frame(spei=spei,
+                     data.frame(spei=data$spei36,
                                 pred=pred.notemp,
                                 se=se.notemp,
                                 metric=lab,
@@ -66,6 +66,17 @@ all <- bind_rows(age_marriage_dat,
 all$max <- all$pred + all$se*2
 all$min <- all$pred - all$se*2
 
+logit2prob <- function(logit){
+  odds <- exp(logit)
+  prob <- odds / (1 + odds)
+  return(prob)
+}
+
+prob_change <- function(coef){
+  res <- logit2prob(coef) - logit2prob(0)
+  round(res, 3)
+}
+
 ggplot(all) + 
   geom_hline(aes(yintercept=0), linetype=2) + 
   geom_line(aes(x=spei, y=pred, color=empowered), size=1) + 
@@ -76,8 +87,32 @@ ggplot(all) +
   theme_minimal() + 
   theme(strip.text.x=element_text(size = 15),
         legend.position = c(0.85, 0.25)) + 
+  scale_y_continuous(labels=prob_change) + 
   labs(x='36-Month Standardized Precipitation-Evapotranspiration Index',
-       y='Change in Log-Odds of Experincing IPV',
+       y='Change in Probability of Experincing IPV',
        fill='Is Empowered?', color='Is Empowered?')
 
 ggsave('C://Users/matt/gbv-tex/Empowerment.pdf', width=8.5, height=5)
+
+
+
+ggplot(all %>% filter(metric=="IPV Never OK")) + 
+  geom_hline(aes(yintercept=0), linetype=2) + 
+  geom_line(aes(x=spei, y=pred, color=empowered), size=1) + 
+  geom_ribbon(aes(x=spei, ymin=min, ymax=max, fill=empowered), alpha=0.1) + 
+  scale_color_manual(values = c("FALSE"="#ca0020", "TRUE"="#0571b0"), labels=c("No", "Yes")) + 
+  scale_fill_manual(values = c("FALSE"="#ca0020", "TRUE"="#0571b0"), labels=c("No", "Yes")) + 
+  #facet_wrap(. ~ metric) + 
+  theme_minimal() + 
+  theme(strip.text.x=element_text(size = 15),
+        legend.position = c(0.25, 0.25)) + 
+  scale_y_continuous(labels=prob_change) + 
+  labs(x='36-Month Standardized Precipitation-Evapotranspiration Index',
+       y='Change in Probability of Experincing IPV',
+       fill='Thinks IPV is Never OK?', color='Thinks IPV is Never OK?')
+
+ggsave('C://Users/matt/gbv-tex/Empowerment_JustIPVnotOK.pdf', width=5.5, height=5)
+
+
+
+

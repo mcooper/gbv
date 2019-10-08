@@ -24,12 +24,13 @@ gbv_countries <- c("AM", "AO", "BF", "BU", "CD", "CI",
                    "NP", "PE", "PH", "RW", "SL", "TD", "TG", "TJ", "TL", "TZ", "UG", 
                    "ZA", "ZM", "ZW")
 
-ids <- dhs_countries(returnFields=c("CountryName", "DHS_CountryCode")) %>%
+#ids <- dhs_countries(returnFields=c("CountryName", "DHS_CountryCode")) %>%
+ids <- read.csv('C://Users/matt/Desktop/DHSCountryCode.csv') %>%
   dplyr::select(country=DHS_CountryCode, CountryName) %>%
   mutate(iso_a3 = countrycode(CountryName, 'country.name', 'iso3c')) %>%
   filter(country %in% gbv_countries)
 
-cty$GBV <- cty$iso_a3 %in% ids$iso_a3
+cty$GBV <- cty$sov_a3 %in% ids$iso_a3
 
 data <- expand.grid(list(latitude=seq(-90, 90, 0.5),
                          longitude=seq(-180, 180, 0.5)))
@@ -53,10 +54,18 @@ data$years_education='Higher'
 data$country='AM'
 
 #Using SPEI36, but could use 24
-load('spei36_phys_ve.Rdata')
+load('spei36_phys_ve_k200.Rdata')
 
-data$effect <- predict(spei36_phys_ve, data %>% mutate(spei36=1), type='link')
-data$normal <- predict(spei36_phys_ve, data %>% mutate(spei36=0), type='link')
+logit2prob <- function(logit){
+  odds <- exp(logit)
+  prob <- odds / (1 + odds)
+  return(prob)
+}
+
+prob_change <- function(coef){
+  res <- logit2prob(coef) - logit2prob(0)
+  res
+}
 
 makeRast <- function(df, field){
   sp <- SpatialPointsDataFrame(df[ , c('longitude', 'latitude')], data = df[ , field, drop=FALSE])
@@ -68,8 +77,14 @@ makeRast <- function(df, field){
   r
 }
 
-data$diff <- data$effect - data$normal
+
+data$effect <- predict(spei36_phys_ve_k15000, data %>% mutate(spei36=1), type='terms')[ , 's(latitude,longitude):spei36']
+
+data$diff <- prob_change(data$effect)
+
+
 diff_rast <- makeRast(data, 'diff')
+diff_rast <- prob_change(diff_rast)
 
 diff_stars <- st_as_stars(crop(diff_rast, extent(-100, 135, -40, 50)))
 cty_sf <- st_as_sf(crop(cty, extent(-100, 135, -40, 50)))
@@ -80,11 +95,11 @@ ggplot() +
   scale_x_discrete(expand=c(0,0)) +
   scale_y_discrete(expand=c(0,0)) + 
   scale_alpha_discrete(guide=FALSE) + 
-  scale_fill_viridis(direction = -1, ) + 
+  scale_fill_viridis(direction = -1) + 
   theme_void() + 
   theme(legend.position = 'bottom',
         legend.box='horizontal') + 
-  labs(fill='Change in Log-Odds of IPV with change in SPEI of 1') #+ 
+  labs(fill='Change in Probability of IPV with change in SPEI of 1') #+ 
   #guides(fill=guide_legend(title.position='top'))
   
 ggsave('C://Users/matt/gbv-tex/EffectMap.pdf', height=4, width=8.5)

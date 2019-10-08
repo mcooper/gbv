@@ -159,6 +159,17 @@ all <- bind_rows(spei12_phys_dat,
 all$max <- all$pred + all$se*2
 all$min <- all$pred - all$se*2
 
+logit2prob <- function(logit){
+  odds <- exp(logit)
+  prob <- odds / (1 + odds)
+  return(prob)
+}
+
+prob_change <- function(coef){
+  res <- logit2prob(coef) - logit2prob(0)
+  round(res, 3)
+}
+
 ggplot(all) + 
   geom_hline(aes(yintercept=0), linetype=2) + 
   geom_line(aes(x=spei, y=pred, color=window), size=1) + 
@@ -166,12 +177,10 @@ ggplot(all) +
   facet_wrap(. ~ outcome) + 
   theme_minimal() + 
   theme(strip.text.x=element_text(size = 15)) + 
+  scale_y_continuous(labels=prob_change) + 
   labs(x='Standardized Precipitation-Evapotranspiration Index',
-       y='Change in Log-Odds of Experincing IPV',
+       y='Change in Probability of Experincing IPV (Percent)',
        color='Precip\nAnomaly\nWindow\n(Months)', fill='Precip\nAnomaly\nWindow\n(Months)')
 
 ggsave('C://Users/matt/gbv-tex/SPEI-Compare.pdf', height=5, width=10)
-
-
-
 
