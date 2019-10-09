@@ -8,8 +8,6 @@ library(parallel)
 dat <- read.csv('/home/mattcoop/mortalityblob/dhs/GBV_all.csv') %>%
   filter(mean_annual_precip > 200 & builtup < 0.1)
 
-dat$viol_any <- dat$viol_phys | dat$viol_sex
-
 cl <- makeCluster(20)
 
 ###########################################
@@ -22,10 +20,21 @@ runAndWrite <- function(name, formula){
   rm(list=name)
 }
 
+
 ##########################
-#SPEI24
+#Compare All SPEI Windows
 ###########################
 
+#12
+runAndWrite('spei12_phys', viol_phys ~ s(spei12) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei12_sex', viol_sex ~ s(spei12) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+#24
 runAndWrite('spei24_phys', viol_phys ~ s(spei24) + s(latitude, longitude, bs='sos') + 
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
@@ -34,56 +43,129 @@ runAndWrite('spei24_sex', viol_sex ~ s(spei24) + s(latitude, longitude, bs='sos'
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
-runAndWrite('spei24_any', viol_any ~ s(spei24) + s(latitude, longitude, bs='sos') + 
+#36
+runAndWrite('spei36_phys', viol_phys ~ s(spei36) + s(latitude, longitude, bs='sos') + 
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
-##########################
-#temp12maxZ
-###########################
-
-runAndWrite('temp12maxZ_phys', viol_phys ~ s(temp12maxZ) + s(latitude, longitude, bs='sos') + 
+runAndWrite('spei36_sex', viol_sex ~ s(spei36) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+			  
+#48
+runAndWrite('spei48_phys', viol_phys ~ s(spei48) + s(latitude, longitude, bs='sos') + 
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
-runAndWrite('temp12maxZ_sex', viol_sex ~ s(temp12maxZ) + s(latitude, longitude, bs='sos') + 
+runAndWrite('spei48_sex', viol_sex ~ s(spei48) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+			  
+
+###################################
+#Re-run basic models with cubic regression and p-splines, to test robustness
+###################################
+#CR
+runAndWrite('spei12_phys_cr', viol_phys ~ s(spei12, bs='cr') + s(latitude, longitude, bs='sos') + 
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
-runAndWrite('temp12maxZ_any', viol_any ~ s(temp12maxZ) + s(latitude, longitude, bs='sos') + 
+runAndWrite('spei24_phys_cr', viol_phys ~ s(spei24, bs='cr') + s(latitude, longitude, bs='sos') + 
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
-##########################
-#temp12max
-###########################
-
-runAndWrite('temp12max_phys', viol_phys ~ s(temp12max) + s(latitude, longitude, bs='sos') + 
+runAndWrite('spei36_phys_cr', viol_phys ~ s(spei36, bs='cr') + s(latitude, longitude, bs='sos') + 
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
-runAndWrite('temp12max_sex', viol_sex ~ s(temp12max) + s(latitude, longitude, bs='sos') + 
+runAndWrite('spei48_phys_cr', viol_phys ~ s(spei48, bs='cr') + s(latitude, longitude, bs='sos') + 
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
-runAndWrite('temp12max_any', viol_any ~ s(temp12max) + s(latitude, longitude, bs='sos') + 
+runAndWrite('spei12_sex_cr', viol_sex ~ s(spei12, bs='cr') + s(latitude, longitude, bs='sos') + 
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
+
+runAndWrite('spei24_sex_cr', viol_sex ~ s(spei24, bs='cr') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei36_sex_cr', viol_sex ~ s(spei36, bs='cr') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei48_sex_cr', viol_sex ~ s(spei48, bs='cr') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+#PS
+runAndWrite('spei12_phys_ps', viol_phys ~ s(spei12, bs='ps') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei24_phys_ps', viol_phys ~ s(spei24, bs='ps') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei36_phys_ps', viol_phys ~ s(spei36, bs='ps') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei48_phys_ps', viol_phys ~ s(spei48, bs='ps') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei12_sex_ps', viol_sex ~ s(spei12, bs='ps') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei24_sex_ps', viol_sex ~ s(spei24, bs='ps') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei36_sex_ps', viol_sex ~ s(spei36, bs='ps') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei48_sex_ps', viol_sex ~ s(spei48, bs='ps') + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+##################################################
+#Try interactions with empowerment
+##################################################
+
+dat$empowered_education <- as.factor(dat$years_education %in% c("Secondary", "Higher"))
+dat$empowered_age_marriage <- as.factor(dat$age_marriage >= 18)
+dat$empowered_age_sex <- as.factor(dat$age_first_sex >= 18)
+dat$empowered_gbv_notok <- as.factor(dat$empowered_gbv_notok)
+dat$empowered_decisions <- as.factor(dat$empowered_decisions)
+
+
+runAndWrite('spei36_phys_empowered_education', viol_phys ~ s(spei36, by=empowered_education) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei36_phys_empowered_age_marriage', viol_phys ~ s(spei36, by=empowered_age_marriage) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei36_phys_empowered_age_sex', viol_phys ~ s(spei36, by=empowered_age_sex) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei36_phys_empowered_gbv_notok', viol_phys ~ s(spei36, by=empowered_gbv_notok) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei36_phys_empowered_decisions', viol_phys ~ s(spei36, by=empowered_decisions) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
 
 ##########################################
 #Try Varying SPEI effect
 ##########################################
-
-
-runAndWrite('spei24_phys_ve', viol_phys ~ s(spei24) + s(latitude, longitude, bs='sos') + s(latitude, longitude, by=spei24, bs='sos') +
-              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
-              country)
-
-runAndWrite('spei24_sex_ve', viol_sex ~ s(spei24) + s(latitude, longitude, bs='sos') + s(latitude, longitude, by=spei24, bs='sos') +
-              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
-              country)
-
-runAndWrite('spei24_any_ve', viol_any ~ s(spei24) + s(latitude, longitude, bs='sos') + s(latitude, longitude, by=spei24, bs='sos') +
+runAndWrite('spei36_phys_ve_k200', viol_phys ~ s(spei36) + s(latitude, longitude, bs='sos', k=200) + s(latitude, longitude, by=spei36, bs='sos', k=200) +
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 

@@ -55,6 +55,9 @@ data$country='AM'
 
 #Using SPEI36, but could use 24
 load('spei36_phys_ve_k200.Rdata')
+load('spei36_phys_ve_k200.Rdata')
+AIC(spei36_phys_ve_k200)
+AIC(spei36_phys)
 
 logit2prob <- function(logit){
   odds <- exp(logit)

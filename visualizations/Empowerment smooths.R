@@ -77,17 +77,21 @@ prob_change <- function(coef){
   round(res, 3)
 }
 
+all$pred_me <- prob_change(all$pred)
+all$max_me <- prob_change(all$max)
+all$min_me <- prob_change(all$min)
+
 ggplot(all) + 
   geom_hline(aes(yintercept=0), linetype=2) + 
-  geom_line(aes(x=spei, y=pred, color=empowered), size=1) + 
-  geom_ribbon(aes(x=spei, ymin=min, ymax=max, fill=empowered), alpha=0.1) + 
+  geom_line(aes(x=spei, y=pred_me, color=empowered), size=1) + 
+  geom_ribbon(aes(x=spei, ymin=min_me, ymax=max_me, fill=empowered), alpha=0.1) + 
   scale_color_manual(values = c("FALSE"="#ca0020", "TRUE"="#0571b0"), labels=c("No", "Yes")) + 
   scale_fill_manual(values = c("FALSE"="#ca0020", "TRUE"="#0571b0"), labels=c("No", "Yes")) + 
   facet_wrap(. ~ metric) + 
   theme_minimal() + 
   theme(strip.text.x=element_text(size = 15),
         legend.position = c(0.85, 0.25)) + 
-  scale_y_continuous(labels=prob_change) + 
+  #scale_y_continuous(labels=prob_change) + 
   labs(x='36-Month Standardized Precipitation-Evapotranspiration Index',
        y='Change in Probability of Experincing IPV',
        fill='Is Empowered?', color='Is Empowered?')
@@ -98,15 +102,15 @@ ggsave('C://Users/matt/gbv-tex/Empowerment.pdf', width=8.5, height=5)
 
 ggplot(all %>% filter(metric=="IPV Never OK")) + 
   geom_hline(aes(yintercept=0), linetype=2) + 
-  geom_line(aes(x=spei, y=pred, color=empowered), size=1) + 
-  geom_ribbon(aes(x=spei, ymin=min, ymax=max, fill=empowered), alpha=0.1) + 
+  geom_line(aes(x=spei, y=pred_me, color=empowered), size=1) + 
+  geom_ribbon(aes(x=spei, ymin=min_me, ymax=max_me, fill=empowered), alpha=0.1) + 
   scale_color_manual(values = c("FALSE"="#ca0020", "TRUE"="#0571b0"), labels=c("No", "Yes")) + 
   scale_fill_manual(values = c("FALSE"="#ca0020", "TRUE"="#0571b0"), labels=c("No", "Yes")) + 
   #facet_wrap(. ~ metric) + 
   theme_minimal() + 
   theme(strip.text.x=element_text(size = 15),
         legend.position = c(0.25, 0.25)) + 
-  scale_y_continuous(labels=prob_change) + 
+  #scale_y_continuous(labels=prob_change) + 
   labs(x='36-Month Standardized Precipitation-Evapotranspiration Index',
        y='Change in Probability of Experincing IPV',
        fill='Thinks IPV is Never OK?', color='Thinks IPV is Never OK?')
