@@ -29,9 +29,16 @@ v744d,IR,gbv justified if wife refuses sex with husband
 v744e,IR,gbv justified if wife burs food
 v511,IR,age at first union
 v525,IR,age at first intercourse
+v702,IR,womeans years education
+v704,IR,husbands occupation
+v705,IR,husbands occupation standardized
+v715,IR,partners years education
+v716,IR,womens occupation
+v717,IR,womens occupation standardized
 mv744a,MR,gbv justified if wife argues
 mv744b,MR,gbv justified if wife neglects children
 mv744c,MR,gbv justified if wife goes out without telling husband
 mv744d,MR,gbv justified if wife refuses sex with husband
 mv744e,MR,gbv justified if wife burs food
 mv150,MR,if household head
+mv716,MR,man's occupation

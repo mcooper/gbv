@@ -8,7 +8,7 @@ library(parallel)
 dat <- read.csv('/home/mattcoop/mortalityblob/dhs/GBV_all.csv') %>%
   filter(mean_annual_precip > 200 & builtup < 0.1)
 
-cl <- makeCluster(20)
+cl <- makeCluster(4)
 
 ###########################################
 #Make a helper function
@@ -161,6 +161,20 @@ runAndWrite('spei36_phys_empowered_decisions', viol_phys ~ s(spei36, by=empowere
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
+#########################################################################
+#Try looking at whether woman or husband work in agricultural labor
+##########################################################################
+
+dat$ag_husband <- as.factor(dat$husband_works_agriculture == 'Agriculture')
+dat$ag_woman <- as.factor(dat$woman_works_agriculture == 'Agriculture')
+
+runAndWrite('spei36_phys_husb_ag', viol_phys ~ s(spei36, by=ag_husband) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
+runAndWrite('spei36_phys_woman_ag', viol_phys ~ s(spei36, by=ag_woman) + s(latitude, longitude, bs='sos') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
 
 ##########################################
 #Try Varying SPEI effect
@@ -169,6 +183,16 @@ runAndWrite('spei36_phys_ve_k200', viol_phys ~ s(spei36) + s(latitude, longitude
               wealth_factor_harmonized + hhsize + date_cmc + years_education + 
               country)
 
+######################################################
+#Try Varying SPEI effect with country random effect
+#######################################################
+runAndWrite('spei36_phys_ve_k200_re', viol_phys ~ s(spei36) + s(latitude, longitude, bs='sos', k=200) + s(latitude, longitude, by=spei36, bs='sos', k=200) +
+              s(country, by=spei36, bs='re') + 
+              wealth_factor_harmonized + hhsize + date_cmc + years_education + 
+              country)
+
 system('~/telegram.sh "Done with SPEI splines"')
+
+
 
 

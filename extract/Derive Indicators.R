@@ -99,6 +99,29 @@ w$viol_sex <- rowSums(w[ , vars] == 1 | w[ , vars] == 2, na.rm=T) > 0
 
 w$viol_sex[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
 
+###############################
+#Years education
+###############################
+w$woman_years_ed <- w$v702_int
+w$woman_years_ed[w$woman_years_ed > 20] <- NA
+
+w$husband_years_ed <- w$v715_int
+w$husband_years_ed[w$husband_years_ed > 20] <- NA
+
+################################
+#Occupations
+###############################
+occ <- read.csv('occupation_mapping.csv')
+
+w <- w %>%
+  merge(occ %>% rename(v705_chr=occupation_category,
+                       woman_works_agriculture=works_agriculture), all.x=T, all.y=F) %>%
+  merge(occ %>% rename(v717_chr=occupation_category,
+                       husband_works_agriculture=works_agriculture), all.x=T, all.y=F)
+
+w$woman_works_category <- w$v705_chr
+w$husband_works_category <- w$v717_ch
+
 ##################################
 #Get rates by DHS site & combine
 #################################
@@ -107,11 +130,11 @@ women <- w %>%
   select(code, date_cmc=v008, hh_code, 
          empowered_decisions, empowered_gbv_notok, years_education,
          viol_phys, viol_sex, age_marriage, age_first_sex,
-         is_married) %>%
+         is_married, woman_years_ed, husband_years_ed, 
+         woman_works_category, husband_works_category,
+         woman_works_agriculture, husband_works_agriculture) %>%
   mutate(country=substr(code, 1, 2),
-         year=1900 + floor((date_cmc - 1)/12)) %>%
-  filter(date_cmc <= 1404) %>%
-  na.omit
+         year=1900 + floor((date_cmc - 1)/12))
 
 spi <- read.csv('GBV_SPI.csv')
 
@@ -129,4 +152,3 @@ all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, spi, wea
 all <- all %>% filter(!is.infinite(spei36) & !is.infinite(spei48))
 
 write.csv(all, 'GBV_all.csv', row.names=F)
-

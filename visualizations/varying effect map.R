@@ -31,17 +31,15 @@ ids <- read.csv('C://Users/matt/Desktop/DHSCountryCode.csv') %>%
   filter(country %in% gbv_countries)
 
 cty$GBV <- cty$sov_a3 %in% ids$iso_a3
+cty$DHS_country <- ids$country[match(cty$sov_a3, ids$iso_a3)]
 
 data <- expand.grid(list(latitude=seq(-90, 90, 0.5),
                          longitude=seq(-180, 180, 0.5)))
 
 datsp <- SpatialPoints(data[ , c('longitude', 'latitude')], proj4string = CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
-ctym <- aggregate(cty[cty$GBV, ], dissolve=T)
+data$country <- over(datsp, cty)[ , 'DHS_country']
 
-within <- gWithin(datsp, ctym, byid=TRUE)
-
-data <- data[within[1 , ], ]
-
+data <- data[!is.na(data$country), ]
 
 ################################################
 #Make Predictions for Drought and Normal Years
@@ -51,13 +49,9 @@ data$wealth_factor_harmonized=0
 data$hhsize=5
 data$date_cmc=1300
 data$years_education='Higher'
-data$country='AM'
 
 #Using SPEI36, but could use 24
-load('spei36_phys_ve_k200.Rdata')
-load('spei36_phys_ve_k200.Rdata')
-AIC(spei36_phys_ve_k200)
-AIC(spei36_phys)
+load('spei36_phys_ve_k200_re.Rdata')
 
 logit2prob <- function(logit){
   odds <- exp(logit)
@@ -71,7 +65,7 @@ prob_change <- function(coef){
 }
 
 makeRast <- function(df, field){
-  sp <- SpatialPointsDataFrame(df[ , c('longitude', 'latitude')], data = df[ , field, drop=FALSE])
+  sp <- SpatialPointsDataFrame(df[ , c('long', 'lat')], data = df[ , field, drop=FALSE])
   
   ref <- raster(nrow=360, ncol=720, xmx=180, xmn=-180, ymx=90, ymn=-90)
   
@@ -81,7 +75,13 @@ makeRast <- function(df, field){
 }
 
 
-data$effect <- predict(spei36_phys_ve_k15000, data %>% mutate(spei36=1), type='terms')[ , 's(latitude,longitude):spei36']
+data$lat <- data$latitude
+data$long <- data$longitude
+
+data$latitude <- 0
+data$longitude <- 0
+
+data$effect <- predict(spei36_phys_ve_k200_re, data %>% mutate(spei36=1), type='terms')[ , 's(latitude,longitude):spei36']
 
 data$diff <- prob_change(data$effect)
 
