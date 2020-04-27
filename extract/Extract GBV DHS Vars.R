@@ -4,9 +4,9 @@ library(haven)
 library(tidyverse)
 library(foreign)
 
-gbv_vars <- read.csv('../dhs/gbv_codes.csv', stringsAsFactors = F)
+gbv_vars <- read.csv('~/gbv/extract/gbv_codes.csv', stringsAsFactors = F)
 
-files <- read.csv('../dhs/scoped_vars.csv', stringsAsFactors = F) %>%
+files <- read.csv('~/gbv/extract/scoped_vars.csv', stringsAsFactors = F) %>%
   filter(!is.na(ge) & !is.na(v044) & !is.na(d105a)) %>%
   arrange(cc, num, subversion) %>%
   filter(!duplicated(paste0(cc, num, subversion), fromLast=T)) %>% #Important: remove old versions of same survey!!

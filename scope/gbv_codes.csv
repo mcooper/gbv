@@ -1,33 +1,105 @@
-label,file,variable,Experience of Physical Violence,Indicators of Women's Empowerment,Participation in Decision Making 1
-d005,IR,violence weight,TRUE,,
-d105a,IR,ever pushed,TRUE,,
-d105b,IR,ever slapped,TRUE,,
-d105c,IR,ever punched,TRUE,,
-d105d,IR,ever kicked,TRUE,,
-d105e,IR,ever strangled,TRUE,,
-d105f,IR,ever threatened with weapon,TRUE,,
-d105g,IR,ever CS physical violence,TRUE,,
-d105j,IR,ever had arm twisted or hair pulled,TRUE,,
-d105h,IR,ever forced into unwated sex,,,
-d105i,IR,Ever forced into other unwanted sex act,,,
-d105k,IR,ever physically forced to perform sex acts,,,
-v501,IR,in union,TRUE,,
-v502,IR,currently or formerly married,,,
-v044,IR,selected for domestic violence module,TRUE,,
-d115y,IR,no one other than husband ever hurt,TRUE,,
-d117a,IR,frequency of hit in last 12 motnhs,TRUE,,
-v005,IR,womens sample weight,,TRUE,TRUE
-v743a,IR,who should have greater say in womens health care,,TRUE,TRUE
-v743b,IR,who should have greater sasy in large household purchases,,TRUE,TRUE
-v743d,IR,who decides on visits to family or relatives,,TRUE,TRUE
-v744a,IR,gbv justified if wife argues,,TRUE,
-v744b,IR,gbv justified if wife neglects children,,TRUE,
-v744c,IR,gbv justified if wife goes out without telling husband,,TRUE,
-v744d,IR,gbv justified if wife refuses sex with husband,,TRUE,
-v744e,IR,gbv justified if wife burs food,,TRUE,
-mv744a,MR,gbv justified if wife argues,,,
-mv744b,MR,gbv justified if wife neglects children,,,
-mv744c,MR,gbv justified if wife goes out without telling husband,,,
-mv744d,MR,gbv justified if wife refuses sex with husband,,,
-mv744e,MR,gbv justified if wife burs food,,,
-mv150,MR,if household head,,,
+label,file,variable
+d005,IR,violence weight
+d105a,IR,ever pushed
+d105b,IR,ever slapped
+d105c,IR,ever punched
+d105d,IR,ever kicked
+d105e,IR,ever strangled
+d105f,IR,ever threatened with weapon
+d105g,IR,ever CS physical violence
+d105j,IR,ever had arm twisted or hair pulled
+d105h,IR,ever forced into unwated sex
+d105i,IR,Ever forced into other unwanted sex act
+d105k,IR,ever physically forced to perform sex acts
+d124,IR,Ever forced to have sex by anyone other than husband/partner in last 12 months
+d125,IR,Ever forced to perform unwanted sexual acts
+v501,IR,in union
+v502,IR,currently or formerly married
+v044,IR,selected for domestic violence module
+d115y,IR,no one other than husband ever hurt
+d117a,IR,frequency of hit in last 12 motnhs
+v005,IR,womens sample weight
+v743a,IR,who should have greater say in womens health care
+v743b,IR,who should have greater sasy in large household purchases
+v743d,IR,who decides on visits to family or relatives
+v744a,IR,gbv justified if wife argues
+v744b,IR,gbv justified if wife neglects children
+v744c,IR,gbv justified if wife goes out without telling husband
+v744d,IR,gbv justified if wife refuses sex with husband
+v744e,IR,gbv justified if wife burs food
+v511,IR,age at first union
+v525,IR,age at first intercourse
+v702,IR,womans years education
+v704,IR,husbands occupation
+v705,IR,husbands occupation standardized
+v715,IR,partners years education
+v716,IR,womens occupation
+v717,IR,womens occupation standardized
+v305_01,IR,ever used contracptive method
+v305_02,IR,ever used contracptive method
+v305_03,IR,ever used contracptive method
+v305_04,IR,ever used contracptive method
+v305_05,IR,ever used contracptive method
+v305_06,IR,ever used contracptive method
+v305_07,IR,ever used contracptive method
+v305_08,IR,ever used contracptive method
+v305_09,IR,ever used contracptive method
+v305_10,IR,ever used contracptive method
+v305_11,IR,ever used contracptive method
+v305_12,IR,ever used contracptive method
+v305_13,IR,ever used contracptive method
+v305_14,IR,ever used contracptive method
+v305_15,IR,ever used contracptive method
+v305_16,IR,ever used contracptive method
+v305_17,IR,ever used contracptive method
+v305_18,IR,ever used contracptive method
+v305_19,IR,ever used contracptive method
+v305_20,IR,ever used contracptive method
+v305_1,IR,ever used contracptive method
+v305_2,IR,ever used contracptive method
+v305_3,IR,ever used contracptive method
+v305_4,IR,ever used contracptive method
+v305_5,IR,ever used contracptive method
+v305_6,IR,ever used contracptive method
+v305_7,IR,ever used contracptive method
+v305_8,IR,ever used contracptive method
+v305_9,IR,ever used contracptive method
+v304a_1,IR,every used contraceptive method by type
+v304a_2,IR,every used contraceptive method by type
+v304a_3,IR,every used contraceptive method by type
+v304a_4,IR,every used contraceptive method by type
+v304a_5,IR,every used contraceptive method by type
+v304a_6,IR,every used contraceptive method by type
+v304a_7,IR,every used contraceptive method by type
+v304a_8,IR,every used contraceptive method by type
+v304a_9,IR,every used contraceptive method by type
+v304a_10,IR,every used contraceptive method by type
+v304a_11,IR,every used contraceptive method by type
+v304a_12,IR,every used contraceptive method by type
+v304a_13,IR,every used contraceptive method by type
+v304a_14,IR,every used contraceptive method by type
+v304a_15,IR,every used contraceptive method by type
+v304a_16,IR,every used contraceptive method by type
+v304a_17,IR,every used contraceptive method by type
+v304a_18,IR,every used contraceptive method by type
+v304a_19,IR,every used contraceptive method by type
+v304a_20,IR,every used contraceptive method by type
+v304a_01,IR,every used contraceptive method by type
+v304a_02,IR,every used contraceptive method by type
+v304a_03,IR,every used contraceptive method by type
+v304a_04,IR,every used contraceptive method by type
+v304a_05,IR,every used contraceptive method by type
+v304a_06,IR,every used contraceptive method by type
+v304a_07,IR,every used contraceptive method by type
+v304a_08,IR,every used contraceptive method by type
+v304a_09,IR,every used contraceptive method by type
+v312,IR,current contraceptive methods
+v131,IR ,current contraceptive method type
+g100,IR ,ever heard of female circumcision
+g101,IR ,ever heard of genital cutting (probed)
+g102,IR ,respondent circumcised
+g103,IR ,flesh removed from genital area
+g104,IR ,genital area just nicked without removing any flesh
+g105,IR ,genital area sewn closed
+g106,IR ,age at circumcision
+g107,IR ,who performed circumcision
