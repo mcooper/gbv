@@ -6,12 +6,12 @@ import time
 
 ee.Initialize()
 
-dat1 = pd.read_csv('~/GBV_geo.csv')
-dat2 = pd.read_csv('~/mortalityblob/dhs/Mortality_geodata.csv')
+buffer = 5000
 
-dat = dat1[['latitude', 'longitude', 'code']].append(dat2[['latitude', 'longitude', 'code']]).drop_duplicates()
+dat = pd.read_csv('~/mortalityblob/dhs/GBV_geo.csv')
 
-ghsl = ee.Image('JRC/GHSL/P2016/BUILT_LDSMT_GLOBE_V1').select('built')
+ttc2015img = ee.Image("Oxford/MAP/accessibility_to_cities_2015_v1_0")
+ttc2000img = ee.Image("users/mwcoopr/time_to_cities2000")
 
 res = []
 bad = []
@@ -19,19 +19,39 @@ completed = []
 
 dat = dat.dropna()
 
-for coord in dat.reset_index().iterrows():
-	print(coord[0]/dat.shape[0])
+alldf = []
+for chunk in np.array_split(dat, 100):
+	print(chunk.index[0]/dat.shape[0])
+	allgeom = []
+	for coord in chunk.iterrows():
+		geom = ee.Geometry.Point(coord[1]['longitude'], coord[1]['latitude']).buffer(buffer)
+		allgeom.append(geom)
 	
-	if coord[1][2] in completed:
-		continue
+	allgeomfc = ee.FeatureCollection(allgeom)
 	
-	geom = ee.Geometry.Point(coord[1][2], coord[1][1]).buffer(15000)
+	ttc2000res = ttc2000img.reduceRegions(reducer=ee.Reducer.mean(), collection=allgeomfc).getInfo()
+	ttc2015res = ttc2015img.reduceRegions(reducer=ee.Reducer.mean(), collection=allgeomfc).getInfo()
 	
+	r2000 = [x['properties']['mean'] if 'mean' in x['properties'].keys() else np.nan for x in ttc2000res['features']]
+	r2015 = [x['properties']['mean'] if 'mean' in x['properties'].keys() else np.nan for x in ttc2015res['features']]
+	
+	df = pd.DataFrame({'ttc2000': r2000, 'ttc2015': r2015, 'code': chunk['code']})
+	
+	alldf.append(df)
+
+final = pd.concat(alldf)
+final.drop_duplicates().to_csv('~/mortalityblob/dhs/GBV_ttc.csv', index=False)
+
+
 	try:
-		raw = ghsl.reduceRegion(reducer=ee.Reducer.frequencyHistogram(), geometry=geom).getInfo()
-		built = raw['built']
-		built['code'] = coord[1][3]
-		res.append(built)
+		raw = ttc2000img.reduceRegion(reducer=ee.Reducer.mean(),geometry=geom).getInfo()
+		ttc2000 = raw['b1']
+		
+		raw = ttc2015img.reduceRegion(reducer=ee.Reducer.mean(),geometry=geom).getInfo()
+		ttc2015 = raw['accessibility']
+		
+		code = coord[1][3]
+		res.append({'ttc2000': ttc2000, 'ttc2015': ttc2015, 'code': code})
 		completed.append(coord[1][3])
 	except Exception as e:
 		bad.append(coord)
@@ -45,5 +65,4 @@ for coord in dat.reset_index().iterrows():
 os.system('~/telegram.sh "Done running EE"')
 
 final = pd.DataFrame(res)
-final.drop_duplicates().to_csv('~/DHS_ghsl.csv', index=False)
-
+final.drop_duplicates().to_csv('~/GBV_ttc.csv', index=False)
