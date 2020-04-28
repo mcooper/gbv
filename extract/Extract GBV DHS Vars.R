@@ -3,10 +3,11 @@ setwd('~/mortalityblob/dhsraw')
 library(haven)
 library(tidyverse)
 library(foreign)
+library(data.table)
 
-gbv_vars <- read.csv('~/gbv/extract/gbv_codes.csv', stringsAsFactors = F)
+gbv_vars <- read.csv('~/gbv/scope/gbv_codes.csv', stringsAsFactors = F)
 
-files <- read.csv('~/gbv/extract/scoped_vars.csv', stringsAsFactors = F) %>%
+files <- read.csv('~/gbv/scope/scoped_vars.csv', stringsAsFactors = F) %>%
   filter(!is.na(ge) & !is.na(v044) & !is.na(d105a)) %>%
   arrange(cc, num, subversion) %>%
   filter(!duplicated(paste0(cc, num, subversion), fromLast=T)) %>% #Important: remove old versions of same survey!!
@@ -14,7 +15,6 @@ files <- read.csv('~/gbv/extract/scoped_vars.csv', stringsAsFactors = F) %>%
 
 ir_vars <- gbv_vars$label[gbv_vars$file=='IR']
 
-women <- data.frame()
 for (i in 1:nrow(files)){
   
   #Get Women's Data
@@ -35,7 +35,7 @@ for (i in 1:nrow(files)){
   ir_dat_sel$num <- files$num[i]
   ir_dat_sel$code <- paste0(ir_dat_sel$cc, '-', ir_dat_sel$num, '-', ir_dat_sel$subversion, '-', ir_dat_sel$v001)
   ir_dat_sel$hh_code <- paste0(ir_dat_sel$code, '-', ir_dat_sel$v002)
-
+  
   #Now get spatial data
   spheadervars <- c('DHSCLUST', 'LATNUM', 'LONGNUM')
   
@@ -62,16 +62,22 @@ for (i in 1:nrow(files)){
     cat("Mismatches in Spatial and Womens data.  Initial size:", initialsize, " now:", nrow(ir_sel), '\n')
   }
   
-  women <- bind_rows(women, ir_dat_sel)
-
+  fname <- paste0('../gbv/individual_surveys/', files$cc[i], '-', files$subversion[i], '-', files$num[i], '.csv')
+  write.csv(ir_dat_sel, fname, row.names=F)
 }
 
-setwd('../dhs/')
+women <- list.files('../gbv/individual_surveys/', full.names = T) %>%
+  lapply(read.csv) 
+
+women <- women %>%
+  rbindlist(fill=TRUE)
 
 women <- women %>%
   mutate(country = substr(code, 1, 2),
          v008 = ifelse(country=='NP', v008 - 681, v008)) %>%
   filter(!(latitude < 1 & latitude > -1 & longitude < 1 & longitude > -1))
+
+setwd('../dhs/')
 
 write.csv(women, 'GBV_women_raw.csv', row.names=F)
 

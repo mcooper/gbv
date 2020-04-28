@@ -5,8 +5,11 @@ library(parallel)
 #Note, for some reason, bam() does NOT work with tidyverse and read_csv()
 #MUST use dplyr and read.csv()
 
-dat <- read.csv('/home/mattcoop/mortalityblob/dhs/GBV_all.csv') %>%
+dat <- read.csv('G:/My Drive/GBV/GBV_all.csv') %>%
   filter(mean_annual_precip > 200 & builtup < 0.1)
+
+
+load('G://My Drive/GBV/models/')
 
 cl <- makeCluster(4)
 
