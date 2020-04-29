@@ -29,72 +29,15 @@ v744d,IR,gbv justified if wife refuses sex with husband
 v744e,IR,gbv justified if wife burs food
 v511,IR,age at first union
 v525,IR,age at first intercourse
-v702,IR,womans years education
+v701,IR,husbands level education
+v702,IR,husbands years education
 v704,IR,husbands occupation
 v705,IR,husbands occupation standardized
-v715,IR,partners years education
+v715,IR,husbands years education
 v716,IR,womens occupation
 v717,IR,womens occupation standardized
-v305_01,IR,ever used contracptive method
-v305_02,IR,ever used contracptive method
-v305_03,IR,ever used contracptive method
-v305_04,IR,ever used contracptive method
-v305_05,IR,ever used contracptive method
-v305_06,IR,ever used contracptive method
-v305_07,IR,ever used contracptive method
-v305_08,IR,ever used contracptive method
-v305_09,IR,ever used contracptive method
-v305_10,IR,ever used contracptive method
-v305_11,IR,ever used contracptive method
-v305_12,IR,ever used contracptive method
-v305_13,IR,ever used contracptive method
-v305_14,IR,ever used contracptive method
-v305_15,IR,ever used contracptive method
-v305_16,IR,ever used contracptive method
-v305_17,IR,ever used contracptive method
-v305_18,IR,ever used contracptive method
-v305_19,IR,ever used contracptive method
-v305_20,IR,ever used contracptive method
-v305_1,IR,ever used contracptive method
-v305_2,IR,ever used contracptive method
-v305_3,IR,ever used contracptive method
-v305_4,IR,ever used contracptive method
-v305_5,IR,ever used contracptive method
-v305_6,IR,ever used contracptive method
-v305_7,IR,ever used contracptive method
-v305_8,IR,ever used contracptive method
-v305_9,IR,ever used contracptive method
-v304a_1,IR,every used contraceptive method by type
-v304a_2,IR,every used contraceptive method by type
-v304a_3,IR,every used contraceptive method by type
-v304a_4,IR,every used contraceptive method by type
-v304a_5,IR,every used contraceptive method by type
-v304a_6,IR,every used contraceptive method by type
-v304a_7,IR,every used contraceptive method by type
-v304a_8,IR,every used contraceptive method by type
-v304a_9,IR,every used contraceptive method by type
-v304a_10,IR,every used contraceptive method by type
-v304a_11,IR,every used contraceptive method by type
-v304a_12,IR,every used contraceptive method by type
-v304a_13,IR,every used contraceptive method by type
-v304a_14,IR,every used contraceptive method by type
-v304a_15,IR,every used contraceptive method by type
-v304a_16,IR,every used contraceptive method by type
-v304a_17,IR,every used contraceptive method by type
-v304a_18,IR,every used contraceptive method by type
-v304a_19,IR,every used contraceptive method by type
-v304a_20,IR,every used contraceptive method by type
-v304a_01,IR,every used contraceptive method by type
-v304a_02,IR,every used contraceptive method by type
-v304a_03,IR,every used contraceptive method by type
-v304a_04,IR,every used contraceptive method by type
-v304a_05,IR,every used contraceptive method by type
-v304a_06,IR,every used contraceptive method by type
-v304a_07,IR,every used contraceptive method by type
-v304a_08,IR,every used contraceptive method by type
-v304a_09,IR,every used contraceptive method by type
 v312,IR,current contraceptive methods
-v131,IR ,current contraceptive method type
+v313,IR ,current contraceptive method type
 g100,IR ,ever heard of female circumcision
 g101,IR ,ever heard of genital cutting (probed)
 g102,IR ,respondent circumcised
