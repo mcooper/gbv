@@ -1,19 +1,27 @@
-setwd('~/mortalityblob/dhsraw')
+if (Sys.info()['sysname']=='Linux'){
+  data_dir <- '/home/mattcoop/mortalityblob/dhsraw'
+  
+  meta_dir <- '/home/mattcoop/gbv/'
+}
 
 library(haven)
 library(tidyverse)
 library(foreign)
 library(data.table)
 
-gbv_vars <- read.csv('~/gbv/scope/gbv_codes.csv', stringsAsFactors = F)
+setwd(meta_dir)
 
-files <- read.csv('~/gbv/scope/scoped_vars.csv', stringsAsFactors = F) %>%
+gbv_vars <- read.csv('scope/gbv_codes.csv', stringsAsFactors = F)
+
+files <- read.csv('scope/scoped_vars.csv', stringsAsFactors = F) %>%
   filter(!is.na(ge) & !is.na(v044) & !is.na(d105a)) %>%
   arrange(cc, num, subversion) %>%
   filter(!duplicated(paste0(cc, num, subversion), fromLast=T)) %>% #Important: remove old versions of same survey!!
   select(num, cc, subversion, ir, ge)
 
 ir_vars <- gbv_vars$label[gbv_vars$file=='IR']
+
+setwd(data_dir)
 
 for (i in 1:nrow(files)){
   
@@ -22,8 +30,8 @@ for (i in 1:nrow(files)){
   
   print(paste0(round(i/nrow(files), 3)*100, '% on ', files$cc[i], '-', files$num[i], '-', files$subversion[i]))
   
-  ir_dat_sel <- ir_dat[ , c(ir_vars[ir_vars %in% names(ir_dat)], "caseid", "v001", "v002", "v003", "v034", "v006", "v008", "v106", "v107")]
-  for (n in c(ir_vars[ir_vars %in% names(ir_dat_sel)], "v106", "v107")){
+  ir_dat_sel <- ir_dat[ , c(ir_vars[ir_vars %in% names(ir_dat)], "caseid", "v001", "v002", "v003", "v008")]
+  for (n in c(ir_vars[ir_vars %in% names(ir_dat_sel)])){
     if (class(ir_dat_sel[ , n, drop=TRUE])=='haven_labelled'){
       ir_dat_sel[ , paste0(n, '_chr')] <- as.character(as_factor(ir_dat_sel[ , n, drop=TRUE]))
       ir_dat_sel[ , paste0(n, '_int')] <- as.numeric(ir_dat_sel[ , n, drop=TRUE])
@@ -77,7 +85,7 @@ women <- women %>%
          v008 = ifelse(country=='NP', v008 - 681, v008)) %>%
   filter(!(latitude < 1 & latitude > -1 & longitude < 1 & longitude > -1))
 
-setwd('../dhs/')
+setwd('../gbv/')
 
 write.csv(women, 'GBV_women_raw.csv', row.names=F)
 

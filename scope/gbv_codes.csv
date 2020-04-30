@@ -16,10 +16,13 @@ d117a,IR,frequency of hit in last 12 motnhs
 d124,IR,Ever forced to have sex by anyone other than husband/partner in last 12 months
 d125,IR,Ever forced to perform unwanted sexual acts
 g102,IR,respondent circumcised
-v005,IR,womens sample weight
+v005,IR,womans sample weight
+v106,IR,womans level education
+v107,IR,womans years education after level
+v133,IR,womans years education
 v044,IR,selected for domestic violence module
 v312,IR,current contraceptive methods
-v313,IR ,current contraceptive method type
+v313,IR,current contraceptive method type
 v501,IR,in union
 v502,IR,currently or formerly married
 v511,IR,age at first union

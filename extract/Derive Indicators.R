@@ -1,4 +1,8 @@
-setwd('~/mortalityblob/dhs/')
+if (Sys.info()['sysname']=='Linux'){
+  data_dir <- '/home/mattcoop/mortalityblob/dhsraw'
+  
+  meta_dir <- '/home/mattcoop/gbv/'
+}
 
 library(tidyverse)
 
