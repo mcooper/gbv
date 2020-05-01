@@ -1,10 +1,16 @@
 if (Sys.info()['sysname']=='Linux'){
-  data_dir <- '/home/mattcoop/mortalityblob/dhsraw'
-  
-  meta_dir <- '/home/mattcoop/gbv/'
+  data_dir <- '/home/mattcoop/mortalityblob/gbv'
+  meta_dir <- '/home/mattcoop/gbv'
 }
 
+setwd(data_dir)
+
 library(tidyverse)
+
+table <- function(...){
+  table(..., useNA = 'always')
+}
+
 
 w <- read.csv('GBV_women_raw.csv') %>%
   filter(v044_int == 1)
@@ -12,10 +18,22 @@ w <- read.csv('GBV_women_raw.csv') %>%
 ###################################
 #Education
 ##################################
-w$years_education <- ifelse(w$v106_int == 0, "None",
-                            ifelse(w$v106_int == 1, "Primary", 
-                                   ifelse(w$v106_int == 2, "Secondary", 
-                                          ifelse(w$v106_int == 3, "Higher", NA))))
+w$woman_education_level <- ifelse(w$v106_int == 0, "None",
+                                  ifelse(w$v106_int == 1, "Primary", 
+                                         ifelse(w$v106_int == 2, "Secondary", 
+                                                ifelse(w$v106_int == 3, "Higher", NA))))
+
+w$woman_education_years <- w$v133_int
+w$woman_education_years[w$woman_education_years > 25] <- NA
+
+w$husband_education_level <- ifelse(w$v701_int == 0, "None",
+                                    ifelse(w$v701_int == 1, "Primary", 
+                                           ifelse(w$v701_int == 2, "Secondary", 
+                                                  ifelse(w$v701_int == 3, "Higher", NA))))
+
+w$husband_education_years <- w$v715_int
+w$husband_education_years[w$husband_education_years > 25] <- NA
+
 
 ##################################
 #Participation in Decision Making
@@ -25,11 +43,8 @@ w$years_education <- ifelse(w$v106_int == 0, "None",
 # only for visits is it who DOES have more say
 
 w$decision_health_own <- w$v743a_int %in% c(1, 2) | w$v743a %in% c(1, 2)
-
 w$decision_purchases_own <- w$v743b_int %in% c(1, 2) | w$v743b %in% c(1, 2)
-
 w$decision_visits_own <- w$v743d_int %in% c(1, 2) | w$v743d %in% c(1, 2)
-
 w$empowered_decisions <- apply(X=w[ , c('decision_health_own', 'decision_purchases_own', 'decision_visits_own')], MARGIN = 1, FUN = all, na.rm=T)
 
 #Unfortinately if all are NA, all() gives TRUE, so find these cases and make them NA
@@ -103,19 +118,10 @@ w$viol_sex <- rowSums(w[ , vars] == 1 | w[ , vars] == 2, na.rm=T) > 0
 
 w$viol_sex[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
 
-###############################
-#Years education
-###############################
-w$woman_years_ed <- w$v702_int
-w$woman_years_ed[w$woman_years_ed > 20] <- NA
-
-w$husband_years_ed <- w$v715_int
-w$husband_years_ed[w$husband_years_ed > 20] <- NA
-
 ################################
 #Occupations
 ###############################
-occ <- read.csv('occupation_mapping.csv')
+occ <- read.csv(paste0(meta_dir, '/scope/occupation_mapping.csv'))
 
 w <- w %>%
   merge(occ %>% rename(v705_chr=occupation_category,
@@ -126,17 +132,30 @@ w <- w %>%
 w$woman_works_category <- w$v705_chr
 w$husband_works_category <- w$v717_ch
 
+############################
+# Contraception
+###############################
+w$woman_contraception <- w$v313_chr
+
+############################
+# Circumcision
+############################
+w$woman_circumcised <- w$g102_chr
+w$woman_circumcised[w$woman_circumcised == '9'] <- NA
+
 ##################################
 #Get rates by DHS site & combine
 #################################
 
 women <- w %>%
   select(code, date_cmc=v008, hh_code, 
-         empowered_decisions, empowered_gbv_notok, years_education,
+         empowered_decisions, empowered_gbv_notok,
          viol_phys, viol_sex, age_marriage, age_first_sex,
-         is_married, woman_years_ed, husband_years_ed, 
+         is_married, woman_education_level, woman_education_years, 
+         husband_education_level, husband_education_years,
          woman_works_category, husband_works_category,
-         woman_works_agriculture, husband_works_agriculture) %>%
+         woman_works_agriculture, husband_works_agriculture,
+         woman_circumcised, woman_contraception) %>%
   mutate(country=substr(code, 1, 2),
          year=1900 + floor((date_cmc - 1)/12))
 
@@ -146,13 +165,16 @@ gbv_geo <- read.csv('GBV_geo.csv') %>%
   select(code, latitude, longitude) %>%
   unique
 
-wealth <- read.csv('hh_wealth_harmonized.csv') %>%
+market <- read.csv('GBV_ttc.csv')
+
+wealth <- read.csv('../dhs/hh_wealth_harmonized.csv') %>%
   select(hh_code, code, wealth_factor_harmonized, hhsize)
 
-built <- read.csv('DHS_ghsl_annual.csv')
+built <- read.csv('../dhs/DHS_ghsl_annual.csv')
 
-all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, spi, wealth, gbv_geo, built))
+all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, spi, wealth, market, gbv_geo, built))
 
-all <- all %>% filter(!is.infinite(spei36) & !is.infinite(spei48))
+all <- all %>% 
+  filter(!is.infinite(spei6) & !is.infinite(spei12) & !is.infinite(spei24) & !is.infinite(spei36) & !is.infinite(spei48))
 
 write.csv(all, 'GBV_all.csv', row.names=F)
