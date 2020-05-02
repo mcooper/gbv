@@ -48,19 +48,14 @@ precip_vrt_file <- extension(rasterTmpFile(), 'ivrt')
 precip_files <- list.files('.', pattern='^chirps.*tif$')
 gdalbuildvrt(paste0('./', precip_files), precip_vrt_file, separate=TRUE, verbose=T, overwrite=TRUE)
 
-#Read in tmax data
-tmax_vrt_file <- extension(rasterTmpFile(), 'ivrt')
-tmax_files <- list.files('.', pattern='TMAX.*tif$')
-gdalbuildvrt(paste0('./', tmax_files), tmax_vrt_file, separate=TRUE, verbose=T, overwrite=TRUE)
-
-#Read in tmin data
-tmin_vrt_file <- extension(rasterTmpFile(), 'ivrt')
-tmin_files <- list.files('.', pattern='TMIN.*tif$')
-gdalbuildvrt(paste0('./', tmin_files), tmin_vrt_file, separate=TRUE, verbose=T, overwrite=TRUE)
+#Read in tave data
+tave_vrt_file <- extension(rasterTmpFile(), 'ivrt')
+tave_files <- list.files('.', pattern='tave.*tif$')
+gdalbuildvrt(paste0('./', tave_files), tave_vrt_file, separate=TRUE, verbose=T, overwrite=TRUE)
 
 extract <- function(vrt, x, y){
   
-  dat <- gdallocationinfo(vrt, x, y, wgs84=TRUE, valonly=TRUE) %>%
+  dat <- gdallocationinfo(vrt, x, y, valonly=TRUE, wgs84 = TRUE) %>%
     as.numeric
   
   dat[dat == -9999] <- NA
@@ -84,22 +79,20 @@ getPercentile <- function(vect, ix){
 cl <- makeCluster(16, outfile = '')
 registerDoParallel(cl)
 
-df <- foreach(n=1:nrow(rll), .packages=c('raster', 'gdalUtils', 'SPEI', 'dplyr', 'zoo'), .combine=bind_rows) %dopar% {
+foreach(n=1:nrow(rll), .packages=c('raster', 'gdalUtils', 'SPEI', 'dplyr', 'zoo'), .combine=bind_rows) %dopar% {
   
   precip <- extract(precip_vrt_file, rll$x[n], rll$y[n])
   
-  tmax <- extract(tmax_vrt_file, rll$x[n], rll$y[n])-273.15
+  tave <- extract(tave_vrt_file, rll$x[n-1], rll$y[n-1])
   
-  tmin <- extract(tmin_vrt_file, rll$x[n], rll$y[n])-273.15
-  
-  PET <- hargreaves(tmin, tmax, lat=rll$y[n], Pre=precip) %>%
+  PET <- thornthwaite(tave, lat=rll$y[n]) %>%
     as.vector
   
   s <- precip - PET
   
-  temp6max <- rollmax(tmax, k=6, fill=NA, na.rm=T, align='right')
-  temp12max <- rollmax(tmax, k=12, fill=NA, na.rm=T, align='right')
-  temp24max <- rollmax(tmax, k=24, fill=NA, na.rm=T, align='right')
+  temp6ave <- rollmean(tave, k=6, fill=NA, na.rm=T, align='right')
+  temp12ave <- rollmean(tave, k=12, fill=NA, na.rm=T, align='right')
+  temp24ave <- rollmean(tave, k=24, fill=NA, na.rm=T, align='right')
   
   precip_12month_total <- rollsum(precip, k=12, fill=NA, na.rm=T, align='right')
   precip_24month_total <- rollsum(precip, k=24, fill=NA, na.rm=T, align='right')
@@ -121,38 +114,36 @@ df <- foreach(n=1:nrow(rll), .packages=c('raster', 'gdalUtils', 'SPEI', 'dplyr',
                           perc48=sapply(FUN=getPercentile, X = 1:length(precip_12month_total), vect=precip_48month_total),
                           
                           #TempZ
-                          temp6maxZ=(temp6max - mean(temp6max, na.rm=T))/sd(temp6max, na.rm=T),
-                          temp12maxZ=(temp12max - mean(temp12max, na.rm=T))/sd(temp12max, na.rm=T),
-                          temp24maxZ=(temp24max - mean(temp24max, na.rm=T))/sd(temp24max, na.rm=T),
+                          temp6aveZ=(temp6ave - mean(temp6ave, na.rm=T))/sd(temp6ave, na.rm=T),
+                          temp12aveZ=(temp12ave - mean(temp12ave, na.rm=T))/sd(temp12ave, na.rm=T),
+                          temp24aveZ=(temp24ave - mean(temp24ave, na.rm=T))/sd(temp24ave, na.rm=T),
 						  
 						              #TempZ
-                          temp6max,
-                          temp12max,
-                          temp24max)
+                          temp6ave,
+                          temp12ave,
+                          temp24ave)
   spsel <- spnew %>% 
     filter(tmpcode==rll$tmpcode[n]) %>%
     merge(interview, all.x=T, all.y=F) %>%
 	mutate(mean_annual_precip=mean(precip, na.rm=T)*12,
-		   mean_annual_tmax=mean(tmax, na.rm=T),
-		   mean_annual_tmin=mean(tmin, na.rm=T)) %>%
+		   mean_annual_tave=mean(tave, na.rm=T)) %>%
 	dplyr::select(-tmpcode)
 
   write.csv(spsel, paste0(data_dir, '/SPItemp/', n), row.names=F)
 
   cat(n, round(n/nrow(rll)*100, 4), 'percent done\n') 
-  
-  spsel
 }
 
-system('/home/mattcoop/telegram.sh "SPI for Mortality Done!"')
+setwd(file.path(data_dir, 'SPItemp'))
 
 df <- list.files() %>%
   lapply(FUN=read.csv, stringsAsFactors=FALSE) %>%
-  Reduce(bind_rows, x=.)
+  bind_rows
 
-write.csv(df, paste0(data_dir, '/GBV_SPI.csv'), row.names=F)
+write.csv(df, file.path(data_dir, '/GBV_SPI.csv'), row.names=F)
 
-system('/home/mattcoop/telegram.sh "SPI for Mortality Done!"')
+system('/home/matt/telegram.sh "SPI for Mortality Done!"')
+
 
 
 
