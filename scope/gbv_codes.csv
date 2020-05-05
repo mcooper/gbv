@@ -1,44 +1,71 @@
-label,file,variable
-d005,IR,violence weight
-d105a,IR,ever pushed
-d105b,IR,ever slapped
-d105c,IR,ever punched
-d105d,IR,ever kicked
-d105e,IR,ever strangled
-d105f,IR,ever threatened with weapon
-d105g,IR,ever CS physical violence
-d105h,IR,ever forced into unwated sex
-d105i,IR,Ever forced into other unwanted sex act
-d105j,IR,ever had arm twisted or hair pulled
-d105k,IR,ever physically forced to perform sex acts
-d115y,IR,no one other than husband ever hurt
-d117a,IR,frequency of hit in last 12 motnhs
-d124,IR,Ever forced to have sex by anyone other than husband/partner in last 12 months
-d125,IR,Ever forced to perform unwanted sexual acts
-g102,IR,respondent circumcised
-v005,IR,womans sample weight
-v106,IR,womans level education
-v107,IR,womans years education after level
-v133,IR,womans years education
-v044,IR,selected for domestic violence module
-v312,IR,current contraceptive methods
-v313,IR,current contraceptive method type
-v501,IR,in union
-v502,IR,currently or formerly married
-v511,IR,age at first union
-v525,IR,age at first intercourse
-v701,IR,husbands level education
-v702,IR,husbands years education after level
-v704,IR,husbands occupation
-v705,IR,husbands occupation standardized
-v715,IR,husbands years education
-v716,IR,womens occupation
-v717,IR,womens occupation standardized
-v743a,IR,who should have greater say in womens health care
-v743b,IR,who should have greater sasy in large household purchases
-v743d,IR,who decides on visits to family or relatives
-v744a,IR,gbv justified if wife argues
-v744b,IR,gbv justified if wife neglects children
-v744c,IR,gbv justified if wife goes out without telling husband
-v744d,IR,gbv justified if wife refuses sex with husband
-v744e,IR,gbv justified if wife burs food
+label,file,variable,
+d005,IR,violence weight,
+d105a,IR,ever pushed,physical violence
+d105b,IR,ever slapped,physical violence
+d105c,IR,ever punched,physical violence
+d105d,IR,ever kicked,physical violence
+d105e,IR,ever strangled,physical violence
+d105f,IR,ever threatened with weapon,physical violence
+d105g,IR,ever CS physical violence,physical violence
+d105h,IR,ever forced into unwated sex,sexual violence
+d105i,IR,Ever forced into other unwanted sex act,sexual violence
+d105j,IR,ever had arm twisted or hair pulled,physical violence
+d105k,IR,Ever been physically forced to perform sexual acts respondent didn't want to,physical violence
+d105l,IR,physical violence,physical violence
+d105m,IR,physical violence,physical violence
+d105n,IR,physical violence,physical violence
+d115y,IR,no one other than husband ever hurt,
+d117a,IR,frequency of hit in last 12 motnhs,
+d124,IR,Ever forced to have sex by anyone other than husband/partner in last 12 months,
+d125,IR,Ever forced to perform unwanted sexual acts,
+g102,IR,respondent circumcised,
+v005,IR,womans sample weight,
+v106,IR,womans level education,
+v107,IR,womans years education after level,
+v133,IR,womans years education,
+v044,IR,selected for domestic violence module,
+v312,IR,current contraceptive methods,
+v313,IR,current contraceptive method type,
+v501,IR,in union,
+v502,IR,currently or formerly married,
+v511,IR,age at first union,
+v525,IR,age at first intercourse,
+v701,IR,husbands level education,
+v702,IR,husbands years education after level,
+v704,IR,husbands occupation,
+v705,IR,husbands occupation standardized,
+v715,IR,husbands years education,
+v716,IR,womens occupation,
+v717,IR,womens occupation standardized,
+v743a,IR,who should have greater say in womens health care,
+v743b,IR,who should have greater sasy in large household purchases,
+v743d,IR,who decides on visits to family or relatives,
+v744a,IR,gbv justified if wife argues,
+v744b,IR,gbv justified if wife neglects children,
+v744c,IR,gbv justified if wife goes out without telling husband,
+v744d,IR,gbv justified if wife refuses sex with husband,
+v744e,IR,gbv justified if wife burs food,
+v155,IR,woman literate,
+v201,IR,number of live births,
+v102,IR,urban/rural,
+v025,IR,urban/rural duplicate,
+v720,IR,partners age,
+v731,IR,respondent worked in past 12 months,
+d103a,IR,Ever been humiliated by husband/partner,Emotional Violence
+d103b,IR,Ever been threatened with harm by husband/partner,Emotional Violence
+d103c,IR,Ever been insulted or made to feel bad by husband/partner,Emotional Violence
+d103d,IR,country emotional violence code,Emotional Violence
+d103e,IR,country emotional violence code,Emotional Violence
+d103f,IR,country emotional violence code,Emotional Violence
+d104,IR,Any emotional violence,Emotional Violence
+d101a,IR,Husband/partner is jealous if respondent talks to other men,Controling
+d101b,IR,Husband/partner accuses respondent of unfaithfulness,Controling
+d101c,IR,Husband/partner does not permit respondent to meet female friends,Controling
+d101d,IR,Husband/partner tries to limit respondent’s contact with family,Controling
+d101e,IR,Husband/partner insists on knowing where respondent is,Controling
+d101f,IR,Husband/partner does not trust respondent with money,Controling
+d101g,IR,Country control issue,Controling
+d101h,IR,Country control issue,Controling
+d101i,IR,Country control issue,Controling
+d101j,IR,Country control issue,Controling
+d102,IR,Number of control issues,Controling
