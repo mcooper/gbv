@@ -8,6 +8,8 @@ library(haven)
 library(tidyverse)
 library(foreign)
 library(data.table)
+library(foreach)
+library(doParallel)
 
 setwd(meta_dir)
 
@@ -23,7 +25,10 @@ ir_vars <- gbv_vars$label[gbv_vars$file=='IR']
 
 setwd(data_dir)
 
-for (i in 1:nrow(files)){
+cl <- makeCluster(16, outfile = '')
+registerDoParallel(cl)
+
+foreach(i=1:nrow(files), .packages=c('haven', 'tidyverse', 'foreign')) %dopar% {
   
   #Get Women's Data
   ir_dat <- read_dta(files$ir[i])
