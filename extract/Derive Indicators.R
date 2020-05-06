@@ -7,13 +7,42 @@ setwd(data_dir)
 
 library(tidyverse)
 
-table <- function(...){
-  table(..., useNA = 'always')
-}
-
-
 w <- read.csv('GBV_women_raw.csv') %>%
-  filter(v044_int == 1)
+  filter(v502_int == 1) 
+
+
+#######################
+#Physical Violence - Just by husband (IPV)
+#########################
+vars <- c('d105a_int', 'd105b_int', 'd105c_int', 'd105d_int', 'd105e_int', 'd105f_int', 'd105g_int', 'd105j_int', 'd105l_int', 'd105m_int', 'd105n_int')
+w$viol_phys <- rowSums(w[ , vars] == 1 | w[ , vars] == 2, na.rm=T) > 0
+
+w$viol_phys[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
+
+#######################
+#Sexual Violence - Just by husband (IPV)
+#########################
+vars <- c('d105h_int', 'd105i_int', 'd105k_int')
+w$viol_sex <- rowSums(w[ , vars] == 1 | w[ , vars] == 2, na.rm=T) > 0
+
+w$viol_sex[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
+
+################################################
+#Emotional Violence - Just by husband (IPV)
+############################################
+vars <- c('d103a_int', 'd103b_int', 'd103c_int', 'd103d_int', 'd103e_int', 'd103f_int')
+w$viol_emot <- rowSums(w[ , vars] == 1 | w[ , vars] == 2, na.rm=T) > 0
+
+w$viol_emot[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
+
+#################################
+#Controling Behavior
+#################################
+vars <- c('d101a_int', 'd101b_int', 'd101c_int', 'd101d_int', 'd101e_int', 'd101f_int', 'd101g_int', 'd101h_int', 'd101i_int', 'd101j_int')
+w$viol_cont <- rowSums(w[ , vars] == 1, na.rm=T) > 0
+
+w$viol_cont[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
+
 
 ###################################
 #Education
@@ -70,7 +99,7 @@ w$empowered_gbv_notok[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)
 ##############################
 #Is Or Was Married
 ##############################
-w$is_married <- w$v502_int > 0
+w$is_married <- w$v501_int == 1
 
 ##############################
 #Age at First Marriage
@@ -85,38 +114,6 @@ w$age_marriage[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
 ##############################
 w$age_first_sex <- w$v525_int
 w$age_first_sex[which(w$age_first_sex==96)] <- w$age_marriage[which(w$age_first_sex==96)]
-
-###################################
-#Physical Violence by Non-Husband
-######################################
-#Too rare, skip for now
-# 
-# vars <- c('d117a_int', 'd117a')
-# 
-# w$viol_phys_nip <- rowSums(w[ , vars] > 0, na.rm=T) > 0
-# w$viol_phys_nip[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
-
-##############################
-#Sexual Violence by Non-Husband
-##############################
-vars <- c('d124')
-#Forgot to extract this variable.  May need to re-run?
-
-#######################
-#Physical Violence - Just by husband (IPV)
-#########################
-vars <- c('d105a_int', 'd105b_int', 'd105c_int', 'd105d_int', 'd105e_int', 'd105f_int', 'd105g_int', 'd105j_int')
-w$viol_phys <- rowSums(w[ , vars] == 1 | w[ , vars] == 2, na.rm=T) > 0
-
-w$viol_phys[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
-
-#######################
-#Sexual Violence - Just by husband (IPV)
-#########################
-vars <- c('d105h_int', 'd105i_int', 'd105k_int')
-w$viol_sex <- rowSums(w[ , vars] == 1 | w[ , vars] == 2, na.rm=T) > 0
-
-w$viol_sex[apply(X=is.na(w[ , vars]), MARGIN = 1, FUN = all, na.rm=T)] <- NA
 
 ################################
 #Occupations
@@ -143,19 +140,56 @@ w$woman_contraception <- w$v313_chr
 w$woman_circumcised <- w$g102_chr
 w$woman_circumcised[w$woman_circumcised == '9'] <- NA
 
+##############################
+# Woman's Age
+##############################
+w$woman_age <- w$v012
+
+############################
+# Woman is literate
+#############################
+w$woman_literate <- w$v155_int == 2
+
+#########################
+# Number of births
+########################
+w$number_births <- w$v201
+
+###########################
+# Urban Rural
+############################
+w$urban_rural <- w$v025_chr
+
+#########################
+# Husband's Age
+##########################
+w$husband_age <- w$v730_int
+
+################################
+# Respondent worked in past twelve months
+############################
+w$woman_employed <- w$v731_chr %in% c(1, 2, 3)
+
 ##################################
 #Get rates by DHS site & combine
 #################################
 
 women <- w %>%
   select(code, date_cmc=v008, hh_code, 
-         empowered_decisions, empowered_gbv_notok,
-         viol_phys, viol_sex, age_marriage, age_first_sex,
-         is_married, woman_education_level, woman_education_years, 
-         husband_education_level, husband_education_years,
-         woman_works_category, husband_works_category,
-         woman_works_agriculture, husband_works_agriculture,
-         woman_circumcised, woman_contraception) %>%
+         viol_phys, viol_sex, viol_emot, viol_cont, 
+         woman_education_level, woman_education_years, 
+         husband_education_level, husband_education_years, 
+         decision_health_own, decision_purchases_own, 
+         decision_visits_own, empowered_decisions, 
+         gbv_notok_burnedfood, gbv_notok_arguing, 
+         gbv_notok_goingout, gbv_notok_neglectingkids, 
+         gbv_notok_refusingsex, empowered_gbv_notok, 
+         is_married, age_marriage, age_first_sex, 
+         woman_works_agriculture, husband_works_agriculture, 
+         woman_works_category, husband_works_category, 
+         woman_contraception, woman_circumcised, woman_age, 
+         woman_literate, number_births, urban_rural, 
+         husband_age, woman_employed) %>%
   mutate(country=substr(code, 1, 2),
          year=1900 + floor((date_cmc - 1)/12))
 
@@ -173,8 +207,5 @@ wealth <- read.csv('../dhs/hh_wealth_harmonized.csv') %>%
 built <- read.csv('../dhs/DHS_ghsl_annual.csv')
 
 all <- Reduce(function(x,y){merge(x, y, all.x=T, all.y=F)}, list(women, spi, wealth, market, gbv_geo, built))
-
-all <- all %>% 
-  filter(!is.infinite(spei6) & !is.infinite(spei12) & !is.infinite(spei24) & !is.infinite(spei36) & !is.infinite(spei48))
 
 write.csv(all, 'GBV_all.csv', row.names=F)
