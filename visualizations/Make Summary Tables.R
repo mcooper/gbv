@@ -1,97 +1,76 @@
 library(tidyverse)
 library(xtable)
 library(lubridate)
-library(rdhs)
+library(countrycode)
+library(mattr)
+library(recipes)
 
-options(stringsAsFactors=F)
+dat <- read.csv('G://My Drive/GBV/GBV_sel.csv')
 
-dat <- read.csv('G://My Drive/DHS Processed/GBV_all.csv') %>%
-  filter(mean_annual_precip > 200 & builtup < 0.1)
-
-wealth_factor_harmonized + hhsize + date_cmc + years_education + 
-  country, spei12, spei24, spei36, spei48, 
-
-empowered_decisions, empowered_gbv_notok,
-age_first_sex, age_marriage, 
-
-viol_sex
-viol_phys
+##################################
+# Summary of Variables
+######################################
 
 summary <- dat %>%
-  mutate(`Education - Higher`=years_education=='Higher',
-         `Education - Secondary`=years_education=='Secondary',
-         `Education - Primary`=years_education=='Primary',
-         `Education - None`=years_education=='None') %>%
-  select(`Wealth Factor`=wealth_factor_harmonized, 
-         `Household Size`=hhsize, 
-         `Date (CMC)`=date_cmc, 
-         `Education - Higher`,
-         `Education - Secondary`,
-         `Education - Primary`,
-         `Education - None`,
-         `SPEI 12-Month`=spei12,
-         `SPEI 24-Month`=spei24,
-         `SPEI 36-Month`=spei36,
-         `SPEI 48-Month`=spei48,
-         `Empowered in Decisionmaking`=empowered_decisions, 
-         `Empowered in IPC Never OK`=empowered_gbv_notok, 
-         `Age at First Sex`=age_first_sex, 
-         `Age at Marriage`=age_marriage, 
-         `Experienced Sexual Violence`=viol_sex, 
-         `Experienced Physical Violence`=viol_phys) %>%
-  gather(Variable, Value) %>%
-  group_by(Variable) %>%
-  summarize(Mean=as.character(round(mean(Value), 2)),
-            Median=as.character(round(median(Value), 2)),
-            Max=as.character(round(max(Value), 2)),
-            Min=as.character(round(min(Value), 2)),
-            `Std Dev`=as.character(round(sd(Value), 2)))
+  mutate(`plos_age(15,19]` = plos_age == '(15,19]',
+         `plos_age(19,29]` = plos_age == '(19,29]',
+         `plos_age(29,39]` = plos_age == '(29,39]',
+         `plos_age(39,49]` = plos_age == '(39,49]',
+         `plos_births(0.5,2]` = plos_births == '(0.5,2]',
+         `plos_births(2,4]` = plos_births == '(2,4]',
+         `plos_births(4,48]` = plos_births == '(4,48]',
+         `plos_hhsize(0,3]` = plos_hhsize == '(0,3]',
+         `plos_hhsize(3,5]` = plos_hhsize == '(3,5]',
+         `plos_hhsize(5,48]` = plos_hhsize == '(5,48]',
+         `plos_husband_age(0,19]` = plos_husband_age == '(0,19]',
+         `plos_husband_age(19,29]` = plos_husband_age == '(19,29]',
+         `plos_husband_age(29,39]` = plos_husband_age == '(29,39]',
+         `plos_husband_age(39,49]` = plos_husband_age == '(39,49]',
+         `plos_husband_age(49,99]` = plos_husband_age == '(49,99]',
+         `husband_education_levelHigher` = husband_education_level == 'Higher',
+         `husband_education_levelNone` = husband_education_level == 'None',
+         `husband_education_levelPrimary` = husband_education_level == 'Primary',
+         `husband_education_levelSecondary` = husband_education_level == 'Secondary',
+         drought_catnormal = drought_cat == 'normal',
+         drought_catdrought = drought_cat == 'drought',
+         drought_catsevere = drought_cat == 'severe') %>%
+  select_if(is.logical) %>%
+  gather(Var, Val) %>%
+  group_by(Var) %>%
+  summarize(Percent = paste0(round(mean(Val)*100, 1), '%'),
+            Count = format(sum(Val), big.mark=','))
 
+#write.csv(summary$Var, 'C://Users/matt/gbv/visualizations/labels.csv', row.names=F)
+labs <- read.csv('C://Users/matt/gbv/visualizations/labels.csv')
 
-####################
-#Make Date Interpretable
-####################
+summaryl <- merge(summary, labs) %>%
+  arrange(Order) %>%
+  select(`  `=Category, ` `=Label, Count, Percent, -Order, -Var)
 
-cmc_to_date <- function(cmc){
-  cmc <- as.numeric(cmc)
-  year <- 1900 + floor((cmc-1)/12)
-  month <- floor(cmc - 12*(year - 1900))
-  paste0(month, ' - ', year)
-}
-
-mean <- cmc_to_date(summary[summary$Variable=='Date (CMC)', 'Mean'])
-median <- cmc_to_date(summary[summary$Variable=='Date (CMC)', 'Median'])
-max <- cmc_to_date(summary[summary$Variable=='Date (CMC)', 'Max'])
-min <- cmc_to_date(summary[summary$Variable=='Date (CMC)', 'Min'])
-
-summary <- bind_rows(summary, 
-                     tibble(Variable='Date (Month - Year)',
-                                Mean=mean, Median=median, Max=max, Min=min, `Std Dev`='')) %>%
-  arrange(Variable) %>%
-  data.frame
-
-print(xtable(summary, 
+hline <- c(-1,0, which(summaryl$`  ` != '') - 1, nrow(summaryl))
+htype <- c("\\toprule ", "\\midrule ", rep("\\midrule ", sum(summaryl$`  ` != '')), "\\bottomrule ")
+print(xtable(summaryl, 
              caption='Summary of Variables Used in Regressions',
              label='tab:var_sum'),
       include.rownames=FALSE,
-      file='C://Users/matt/gbv-tex/tables/variable_summary.tex')
+      hline.after = NULL,
+      add.to.row = list(pos = as.list(hline),
+                        command = htype),
+      file='C://Users/matt/ipv-rep-tex/tables/variable_summary.tex')
 
-ids <- dhs_countries(returnFields=c("CountryName", "DHS_CountryCode")) %>%
-  dplyr::select(country=DHS_CountryCode, CountryName)
-
-datm <- merge(dat, ids, all.x=T, all.y=F)
-
-t <- addmargins(table(datm$CountryName, datm$year))
+########################################
+# Summary of Observations by Country and Year
+#########################################
+t <- addmargins(table(countrycode(dat$country, 'dhs', 'country.name'), 
+                      dat$year))
 
 print(xtable(t, 
              caption='Count of Observations by Country and Year',
              label='tab:cty_year',
              digits=0),
-      file='C://Users/matt/gbv-tex/tables/country_year.tex', 
+      file='C://Users/matt/ipv-rep-tex/tables/country_year.tex', 
       #size="\\fontsize{8pt}{8pt}\\selectfont", 
       floating.environment = "sidewaystable")
-
-
 
 
 

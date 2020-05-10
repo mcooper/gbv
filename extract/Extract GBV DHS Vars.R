@@ -75,6 +75,10 @@ foreach(i=1:nrow(files), .packages=c('haven', 'tidyverse', 'foreign')) %dopar% {
     cat("Mismatches in Spatial and Womens data.  Initial size:", initialsize, " now:", nrow(ir_sel), '\n')
   }
   
+  #Keep just women with DV module
+  ir_dat_sel <- ir_dat_sel %>%
+    filter(v044_int == 1)
+  
   fname <- paste0('../gbv/individual_surveys/', files$cc[i], '-', files$subversion[i], '-', files$num[i], '.csv')
   write.csv(ir_dat_sel, fname, row.names=F)
 }
