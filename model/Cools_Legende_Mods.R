@@ -9,9 +9,9 @@ if (Sys.info()['sysname']=='Linux'){
 library(tidyverse)
 library(broom)
 library(texreg)
+library(ape)
 
-dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
-  mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
+dat <- read.csv(file.path(data_dir, 'GBV_all.csv'))
 
 logit2prob <- function(logit){
   odds <- exp(logit)
@@ -43,6 +43,19 @@ getAME <- function(mod, df){
            severe = severe - normal,
            normal = NULL)
 }
+
+getMorans <- function(dat, outvar, lat='latitude', lon='longitude', code='code'){
+	sel <- unique(cbind(round(dat[ , lat], 1), round(dat[ , lon], 2)))
+
+	dists <- as.matrix(dist(sel))
+
+	ozone.dists.inv <- 1/ozone.dists
+	diag(ozone.dists.inv) <- 0
+	 
+	ozone.dists.inv[1:5, 1:5]
+}
+
+
 
 phys_mod_all <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
                       plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')

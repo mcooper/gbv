@@ -25,6 +25,8 @@ sel <-  dat %>%
          plos_rural, husband_education_level, plos_husband_age, country, drought_cat,
          code, year, latitude, longitude) %>%
   mutate(survey_code=substr(code, 1, 6)) %>%
-  na.omit
+  na.omit %>%
+	group_by(code) %>%
+	mutate(ind_code = paste0(code, '-', row_number()))
 
 write.csv(sel, file.path(data_dir, 'GBV_sel.csv'), row.names=F)
