@@ -1,7 +1,3 @@
-########################################################
-# Note: To get Moran's I, must use a large instance (E16)
-########################################################
-
 if (Sys.info()['sysname']=='Linux'){
   data_dir <- '/home/mattcoop/mortalityblob/gbv'
   meta_dir <- '/home/mattcoop/gbv'
@@ -13,7 +9,6 @@ if (Sys.info()['sysname']=='Linux'){
 library(tidyverse)
 library(broom)
 library(texreg)
-library(ape)
 
 dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
   mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
@@ -107,59 +102,6 @@ emot_mod_afr <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_bi
 cont_mod_afr <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
                       plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
 
-#################################################
-#Examine residuals in models
-#####################################################
-
-resids <- dat %>%
-	select(ind_code, code)
-for (mod in ls()[grepl('mod', ls())]){
-  if (grepl('all', mod)){
-    sel <- dat %>%
-			select(ind_code)
-		sel[ , mod] <- residuals(eval(parse(text=mod)))
-  }
-  if (grepl('afr', mod)){
-    sel <- dat %>% 
-			filter(in_afr) %>%
-			select(ind_code)
-		sel[ , mod] <- residuals(eval(parse(text=mod)))
-  }
-  if (grepl('cty', mod)){
-    sel <- dat %>% 
-			filter(in_cty) %>%
-			select(ind_code)
-		sel[ , mod] <- residuals(eval(parse(text=mod)))
-  }
-  if (grepl('plos', mod)){
-    sel <- dat %>% 
-			filter(in_plos_paper) %>%
-			select(ind_code)
-		sel[ , mod] <- residuals(eval(parse(text=mod)))
-  }
-	
-	resids <- merge(resids, sel, all.x=T, all.y=T)
-}
-
-resid_sum <- resids %>%
-	select(-ind_code) %>%
-	group_by(code) %>%
-	summarize_each(mean)
-
-dmat <- readRDS(file = file.path(data_dir, "gbv_InvDistMat.rds"))
-
-moran_df <- data.frame()
-for (col in names(resid_sum)[names(resid_sum) != 'code']){
-	print(col)
-	sel <- resid_sum[!is.na(resid_sum[ , col]), ]
-	
-	dmatsel <- dmat[rownames(dmat) %in% sel$code, colnames(dmat) %in% sel$code]
-	
-	mi <- data.frame(Moran.I(sel[ , col, drop=T], dmatsel))
-	mi$mod <- col
-
-	moran_df <- bind_rows(moran_df, mi)
-}
 
 ########################################
 #Get AMEs
@@ -169,7 +111,10 @@ if ('mod' %in% ls()){rm('mod')}
 all <- data.frame()
 for (mod in ls()[grepl('mod', ls())]){
   print(mod)
-  r <- tidy(eval(parse(text=mod))) %>%
+	
+	saveRDS(eval(parse(text=mod)), file=paste0('~/mortalityblob/gbv_gams/', mod, '_plos.RDS'))
+  
+	r <- tidy(eval(parse(text=mod))) %>%
     filter(term %in% c('drought_catsevere', 'drought_catdrought'))
   
   if (grepl('all', mod)){

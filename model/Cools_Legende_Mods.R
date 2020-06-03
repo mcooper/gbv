@@ -10,8 +10,37 @@ library(tidyverse)
 library(broom)
 library(texreg)
 library(ape)
+library(orthopolynom)
+library(foreach)
+library(doParallel)
 
-dat <- read.csv(file.path(data_dir, 'GBV_all.csv'))
+#############################
+# Define Helper Functions
+#############################
+
+derive_legendre <- function(x, y, n){
+	#Given X and Y coords and an Nth order,
+	#Derive the Legendre polynomials, a la Cools, et al 2020
+
+	#Derive Legende polynomials
+	legcoef <- legendre.polynomials(n=n, normalized=TRUE)
+	leg <- as.data.frame(c(polynomial.values(polynomials=legcoef, 
+																						x=scaleX(dat$longitude, u=-1, v=1)), 
+													polynomial.values(polynomials=legcoef, 
+																						x=scaleX(dat$latitude, u=-1, v=1))))
+	names(leg) <- c(paste0("leg", 0:n, "x"),
+									paste0("leg", 0:n, "y"))
+
+	for (l in 0:n){
+		for (k in 0:n){
+			leg[ paste0('l', l, 'k', k)] <- leg[ , paste0('leg', l, 'x')]*leg[ , paste0('leg', k, 'y')]
+		}
+	}
+	
+	leg <- leg %>% select(-matches('leg'))
+	
+	return(leg)
+}
 
 logit2prob <- function(logit){
   odds <- exp(logit)
@@ -44,83 +73,170 @@ getAME <- function(mod, df){
            normal = NULL)
 }
 
-getMorans <- function(dat, outvar, lat='latitude', lon='longitude', code='code'){
-	sel <- unique(cbind(round(dat[ , lat], 1), round(dat[ , lon], 2)))
+plotvars <- function(dat, vars){
+	#Given a datafram with columns latitude, longitude, and a list of vars
+	#	Will sum the vars,
+	# Then the the mean at each lat-lon integer combo
+	# Then plot it
 
-	dists <- as.matrix(dist(sel))
+	dat$outcome <- rowSums(dat[ vars])
 
-	ozone.dists.inv <- 1/ozone.dists
-	diag(ozone.dists.inv) <- 0
-	 
-	ozone.dists.inv[1:5, 1:5]
+	res_sum <- dat %>%
+		mutate(latitude = round(latitude, 0),
+					 longitude = round(longitude, 0)) %>%
+		group_by(latitude, longitude) %>%
+		summarize(outcome = mean(outcome))
+
+	ggplot(res_sum) + geom_raster(aes(x=longitude, y=latitude, fill=outcome)) + 
+	 theme_void() + guides(fill=F)	
+
 }
 
 
+getMoransI <- function(data, residuals){
+	data$residual <- residuals
+	
+	resid_sum <- data %>%
+		mutate(latitude = round(latitude, 0),
+					 longitude = round(longitude, 0)) %>%
+		group_by(latitude, longitude) %>%
+		summarize(residual=mean(residual))
 
-phys_mod_all <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')
-sex_mod_all <- glm(viol_sex ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                     plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')
-emot_mod_all <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')
-cont_mod_all <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')
+	dmat <- as.matrix(dist(resid_sum[ , c('longitude', 'latitude')]))
+	dmat <- 1/dmat
+	diag(dmat) <- 0
 
-####################################################
-#Mark data from PLOS article regress only that data
-#####################################################
+		
+	mi <- data.frame(Moran.I(resid_sum$residual, dmat))
+
+	return(mi$p.value)
+}
+
+runModelUntilNoSA <- function(savename, data){
+	#Run a model, adding higher and higher Legendre polynomials,
+	#until there is no more spatial autocorrelation
+	#Then save the final model
+	
+	if (grepl('all', savename)){
+		data <- data
+	}
+	if (grepl('plos', savename)){
+		data <- data %>% filter(in_plos_paper)
+	}
+	if (grepl('cty', savename)){
+		data <- data %>% filter(in_cty)
+	}
+	if (grepl('afr', savename)){
+		data <- data %>% filter(in_afr)
+	}
+
+	outcome <- paste0('viol_', substr(savename, 1, gregexpr('_mod', savename)[[1]][1] - 1))
+
+	SA <- TRUE
+	i <- 1
+	while (SA & i <= 10){
+		cat(savename, ': Running with', i, 'order polynomial \n')
+
+		fe <- crossing(l=0:i, k=0:i) %>%
+			rowwise() %>%
+			mutate(var = paste0(' + survey_code*l', l, 'k', k))
+
+		form <- paste0(outcome, 
+									' ~ plos_age + woman_literate + is_married + plos_births + 
+									plos_hhsize + plos_rural + husband_education_level + 
+									plos_husband_age + drought_cat',
+								paste0(fe$var, collapse=''))
+		
+		mod <- glm(as.formula(form), data=data, family=binomial(link = 'logit'))
+
+		mi <- getMoransI(data, residuals(mod))
+		cat(savename, ': \t\tMorans I of', mi, '\n')
+		
+		if (mi > 0.01){
+			SA <- FALSE
+			saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', savename, '.RDS'))
+		}	
+
+		i <- i + 1
+
+	}
+	
+	if (SA){
+		cat(savename, ': Still SA with 10-degree polynomial\n',
+				file='~/gbv_moran_res', append=T)
+		saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', savename, '.RDS'))
+	}
+}
+
+##########################################################
+# Read in and process data
+#########################################################
+
+dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
+  mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
+
+dat <- cbind(dat, derive_legendre(dat$longtiude, 
+																	 dat$latitude,
+																	 n=10))
+
 dat$in_plos_paper <- dat$survey_code %in% c("SL-6-1", "TG-6-1", "BJ-7-1", "CI-6-1", "CM-6-1",
                                             "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1", 
                                             "UG-7-2", "KE-7-1", "TZ-7-2", "MW-7-2", "MZ-6-1",
                                             "ZW-7-1", "ZM-6-1", "NM-6-1", "AO-7-1")
 
-phys_mod_plos <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                       plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_plos_paper), family = 'binomial')
-sex_mod_plos <- glm(viol_sex ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_plos_paper), family = 'binomial')
-emot_mod_plos <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                       plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_plos_paper), family = 'binomial')
-cont_mod_plos <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                       plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_plos_paper), family = 'binomial')
-
-####################################################
-#See if it's an effect specific to those countries
-#####################################################
 dat$in_cty <- dat$country %in% c("SL", "TG", "BJ", "CI", "CM",
                                  "GA", "TD", "CD", "RW", "BU", 
                                  "UG", "KE", "TZ", "MW", "MZ",
                                  "ZW", "ZM", "NM", "AO")
 
-phys_mod_cty <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_cty), family = 'binomial')
-sex_mod_cty <- glm(viol_sex ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                     plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_cty), family = 'binomial')
-emot_mod_cty <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_cty), family = 'binomial')
-cont_mod_cty <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_cty), family = 'binomial')
-
-####################################################
-#See if it's an Africa specific effect
-#####################################################
 dat$in_afr <- dat$latitude < 23 & dat$longitude > -20 & dat$longitude < 50
 
 
-phys_mod_afr <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
-sex_mod_afr <- glm(viol_sex ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                     plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
-emot_mod_afr <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
-cont_mod_afr <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
+############################################################
+# Run global models
+###############################################################
 
-if ('mod' %in% ls()){rm('mod')}
+mods <- c('phys_mod_all', 'sex_mod_all', 'emot_mod_all', 'cont_mod_all', 
+					'phys_mod_plos', 'sex_mod_plos', 'emot_mod_plos', 'cont_mod_plos', 
+					'phys_mod_cty', 'sex_mod_cty', 'emot_mod_cty', 'cont_mod_cty', 
+					'phys_mod_afr', 'sex_mod_afr', 'emot_mod_afr', 'cont_mod_afr')
+
+cl <- makeCluster(4, outfile = '')
+registerDoParallel(cl)
+
+foreach(mod=mods, .packages=c('ape', 'tidyverse', 'orthopolynom')) %dopar% {
+	runModelUntilNoSA(mod, dat)
+}
+
+system('~/telegram.sh "Models Done~"')
+
+
+system('poweroff')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 all <- data.frame()
 for (mod in ls()[grepl('mod', ls())]){
   print(mod)
-  r <- tidy(eval(parse(text=mod))) %>%
+	saveRDS(eval(parse(text=mod)), file=paste0('~/mortalityblob/gbv_gams/', mod, '_cools.RDS'))
+  
+	r <- tidy(eval(parse(text=mod))) %>%
     filter(term %in% c('drought_catsevere', 'drought_catdrought'))
   
   if (grepl('all', mod)){
@@ -159,8 +275,10 @@ allm <- all %>%
                                         '\nViolence')),
          scale = factor(substr(mod, nchar(mod) - 3, nchar(mod)),
                         levels=c('plos', '_cty', '_afr', '_all'),
-                        labels=c('Previous\n Analysis\n(n=83,970)', 'Previous\nCountries\nMore Surveys\n(n=123,488)',
-                               'All\nAfrican\nSurveys\n(n=194,820)', 'All\nAvailable\nSurveys\n(n=380,100)')),
+                        labels=c('Previous\n Analysis\n(n=83,970)', 
+																 'Previous\nCountries\nMore Surveys\n(n=123,488)',
+																 'All\nAfrican\nSurveys\n(n=194,820)',
+																 'All\nAvailable\nSurveys\n(n=380,100)')),
          drought = factor(drought, levels=c('drought', 'severe'), 
                           labels=c('Moderate', 'Severe')),
          stars = case_when(p.value > 0.05 ~ '',
@@ -179,7 +297,7 @@ ggplot(allm) +
   theme_bw() + 
   labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 
-ggsave('C://Users/matt/ipv-rep-tex/img/mod_results.pdf', width=6, height=6)
+ggsave('~/ipv-rep-tex/img/mod_cools_results.pdf', width=6, height=6)
 
 ############################
 # Make texreg results
@@ -219,6 +337,3 @@ texreg(l=list(cont_mod_plos, cont_mod_cty, cont_mod_afr, cont_mod_all),
        file='C://Users/matt/ipv-rep-tex/tables/cont_mods.tex',
        custom.model.names = c('Mod1', 'Mod2', 'Mod3', 'Mod4'),
        label='tab:cont_mod',
-       caption="Results of models with outcome variable of Controlling IPV. Mod1 refers to a model using the same surveys used by Epstein et al \\cite{Epstein2020}. Mod2 refers to a model using the same countries as Epstein et al, but with all available surveys.  Mod3 refers to a model with all African countries, and Mod4 refers to a model with a global datasets of all DHS countries with IPV data.",
-       longtable=T,
-       use.packages=F)
