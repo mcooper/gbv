@@ -7,12 +7,10 @@ if (Sys.info()['sysname']=='Linux'){
 }
 
 library(tidyverse)
-library(broom)
+library(fastglm)
 library(texreg)
 library(ape)
 library(orthopolynom)
-library(foreach)
-library(doParallel)
 
 #############################
 # Define Helper Functions
@@ -147,8 +145,14 @@ runModelUntilNoSA <- function(savename, data){
 									plos_husband_age + drought_cat',
 								paste0(fe$var, collapse=''))
 		
-		mod <- glm(as.formula(form), data=data, family=binomial(link = 'logit'))
-
+		X <- model.matrix(as.formula(form), data)
+	
+		mod <- fastglm(x=X, 
+									 y=as.numeric(data[ , outcome]), 
+									 data=data, 
+									 family=binomial(link = 'logit'),
+									 method=3)
+		
 		mi <- getMoransI(data, residuals(mod))
 		cat(savename, ': \t\tMorans I of', mi, '\n')
 		
@@ -191,6 +195,7 @@ dat$in_cty <- dat$country %in% c("SL", "TG", "BJ", "CI", "CM",
 
 dat$in_afr <- dat$latitude < 23 & dat$longitude > -20 & dat$longitude < 50
 
+dat$survey_code <- as.character(dat$survey_code)
 
 ############################################################
 # Run global models
@@ -201,10 +206,8 @@ mods <- c('phys_mod_all', 'sex_mod_all', 'emot_mod_all', 'cont_mod_all',
 					'phys_mod_cty', 'sex_mod_cty', 'emot_mod_cty', 'cont_mod_cty', 
 					'phys_mod_afr', 'sex_mod_afr', 'emot_mod_afr', 'cont_mod_afr')
 
-cl <- makeCluster(4, outfile = '')
-registerDoParallel(cl)
 
-foreach(mod=mods, .packages=c('ape', 'tidyverse', 'orthopolynom')) %dopar% {
+for(mod in mods){
 	runModelUntilNoSA(mod, dat)
 }
 
