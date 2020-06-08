@@ -7,39 +7,15 @@ if (Sys.info()['sysname']=='Linux'){
 }
 
 library(tidyverse)
-library(fastglm)
-library(texreg)
+library(mgcv)
 library(ape)
-library(orthopolynom)
+library(parallel)
+
+cl <- makeCluster(4)
 
 #############################
 # Define Helper Functions
 #############################
-
-derive_legendre <- function(x, y, n){
-	#Given X and Y coords and an Nth order,
-	#Derive the Legendre polynomials, a la Cools, et al 2020
-
-	#Derive Legende polynomials
-	legcoef <- legendre.polynomials(n=n, normalized=TRUE)
-	leg <- as.data.frame(c(polynomial.values(polynomials=legcoef, 
-																						x=scaleX(dat$longitude, u=-1, v=1)), 
-													polynomial.values(polynomials=legcoef, 
-																						x=scaleX(dat$latitude, u=-1, v=1))))
-	names(leg) <- c(paste0("leg", 0:n, "x"),
-									paste0("leg", 0:n, "y"))
-
-	for (l in 0:n){
-		for (k in 0:n){
-			leg[ paste0('l', l, 'k', k)] <- leg[ , paste0('leg', l, 'x')]*leg[ , paste0('leg', k, 'y')]
-		}
-	}
-	
-	leg <- leg %>% select(-matches('leg'))
-	
-	return(leg)
-}
-
 plotvars <- function(dat, vars){
 	#Given a datafram with columns latitude, longitude, and a list of vars
 	#	Will sum the vars,
@@ -77,7 +53,7 @@ getMoransI <- function(data, residuals){
 	return(mi$p.value)
 }
 
-runModelUntilNoSA <- function(savename, data, allvars=TRUE, start=1, end=6){
+runModelUntilNoSA <- function(savename, data, allvars=TRUE, knots=c(50, 100, 500, 1000)){
 	#Run a model, adding higher and higher Legendre polynomials,
 	#until there is no more spatial autocorrelation
 	#Then save the final model
@@ -98,46 +74,35 @@ runModelUntilNoSA <- function(savename, data, allvars=TRUE, start=1, end=6){
 	outcome <- paste0('viol_', substr(savename, 1, gregexpr('_mod', savename)[[1]][1] - 1))
 
 	SA <- TRUE
-	i <- start
-	while (SA & i <= end){
-		cat(savename, ': Running with', i, 'order polynomial \n')
+	for (k in knots){
+		if(SA){
+			cat(savename, ': Running with', k, 'knot spline \n')
 
-		fe <- crossing(l=0:i, k=0:i) %>%
-			rowwise() %>%
-			mutate(var = paste0(' + survey_code*l', l, 'k', k))
-
-		form <- paste0(outcome, 
-									ifelse(allvars, ' ~ plos_age + woman_literate + is_married + 
-																			plos_births + plos_hhsize + 
-																			plos_rural + husband_education_level + 
-																			plos_husband_age + drought_cat',
-																		' ~ drought_cat'),
-								paste0(fe$var, collapse=''))
-		
-		X <- model.matrix(as.formula(form), data)
-	
-		mod <- fastglm(x=X, 
-									 y=as.numeric(data[ , outcome]), 
-									 data=data, 
-									 family=binomial(link = 'logit'),
-									 method=3)
-		
-		mi <- getMoransI(data, residuals(mod))
-		cat(savename, ': \t\tMorans I of', mi, '\n')
+			form <- paste0(outcome, 
+										ifelse(allvars, ' ~ plos_age + woman_literate + is_married + 
+																				plos_births + plos_hhsize + 
+																				plos_rural + husband_education_level + 
+																				plos_husband_age + drought_cat + ',
+																			' ~ drought_cat + '),
+									paste0('s(latitude, longitude, bs="sos", k=', k, ')'))
 			
-		saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', 
-												savename, 
-												ifelse(allvars, '_cools_allvars_', '_cools_'),
-												i, '.RDS'))
-		
-		if (mi > 0.01){
-			SA <- FALSE
-		}	
-
-		i <- i + 1
-
+			mod <- bam(as.formula(form),
+								 data=data, 
+								 family=binomial(link = 'logit'), cluster=cl)
+			
+			mi <- getMoransI(data, residuals(mod))
+			cat(savename, ': \t\tMorans I of', mi, '\n')
+				
+			saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', 
+													savename, 
+													ifelse(allvars, '_gam_allvars_', '_gam_'),
+													k, '.RDS'))
+			
+			if (mi > 0.01){
+				SA <- FALSE
+			}	
+		}
 	}
-
 }
 
 ##########################################################
@@ -146,10 +111,6 @@ runModelUntilNoSA <- function(savename, data, allvars=TRUE, start=1, end=6){
 
 dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
   mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
-
-dat <- cbind(dat, derive_legendre(dat$longtiude, 
-																	 dat$latitude,
-																	 n=10))
 
 dat$in_plos_paper <- dat$survey_code %in% c("SL-6-1", "TG-6-1", "BJ-7-1", "CI-6-1", "CM-6-1",
                                             "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1",
@@ -169,9 +130,9 @@ dat$survey_code <- as.character(dat$survey_code)
 # Run global models
 ###############################################################
 
-mods <- c(#'phys_mod_plos', 'sex_mod_plos', 'emot_mod_plos', 'cont_mod_plos', 
-					#'phys_mod_cty', 'sex_mod_cty', 'emot_mod_cty', 'cont_mod_cty', 
-					#'phys_mod_afr', 'sex_mod_afr', 'emot_mod_afr', 'cont_mod_afr',
+mods <- c('phys_mod_plos', 'sex_mod_plos', 'emot_mod_plos', 'cont_mod_plos', 
+					'phys_mod_cty', 'sex_mod_cty', 'emot_mod_cty', 'cont_mod_cty', 
+					'phys_mod_afr', 'sex_mod_afr', 'emot_mod_afr', 'cont_mod_afr',
 					'phys_mod_all', 'sex_mod_all', 'emot_mod_all', 'cont_mod_all')
 
 
