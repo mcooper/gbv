@@ -7,10 +7,10 @@ if (Sys.info()['sysname']=='Linux'){
   meta_dir <- 'C://Users/matt/gbv'
 }
 
-library(fastglm)
 library(tidyverse)
-library(orthopolynom)
+library(mgcv)
 library(broom)
+library(ape)
 
 #########################################
 # Define Functions
@@ -22,95 +22,71 @@ logit2prob <- function(logit){
   return(prob)
 }
 
-mypredict <- function(mod, df){
-	#Custom predict function that can handle both GLM and fastGLM models
-	if (class(mod) == 'glm'){
-		res <- predict(mod, df)
-	}
-	
-	if (class(mod) == 'fastglm'){
-		order <- max(as.numeric(substr(names(mod$coefficients), 
-																	 nchar(names(mod$coefficients)), 
-																	 nchar(names(mod$coefficients)))), na.rm=T)
-
-		fe <- crossing(l=0:order, k=0:order) %>%
-			rowwise() %>%
-			mutate(var = paste0(' + survey_code*l', l, 'k', k))
-
-		#determine which vars were uses in fitting
-		if ('woman_literateTRUE' %in% names(mod$coefficients)){
-			form <- paste0('viol_phys ~ plos_age + woman_literate + is_married + 
-												plos_births + plos_hhsize + 
-												plos_rural + husband_education_level + 
-												plos_husband_age + drought_cat',
-									paste0(fe$var, collapse=''))
-			
-			X <- model.matrix(as.formula(form), df)	
-		} else{
-			form <- paste0('viol_phys ~ drought_cat',
-									paste0(fe$var, collapse=''))
-			
-			X <- model.matrix(as.formula(form), df)	
-		}
-
-		res <- predict(mod, X)
-	}
-
-	return(res)
-
-}
-
 getAME <- function(mod, df){
-  df$drought_cat <- NULL
+	df$drought_cat <- NULL
   
   df <- bind_rows(df %>% mutate(drought_cat='severe'),
-                  df %>% mutate(drought_cat='drought'),
-                  df %>% mutate(drought_cat='normal'))
-  
-  pred <- mypredict(mod, df)
-  
-  df$fit <- logit2prob(pred)
-  
-  df <- df %>%
-    group_by(drought_cat) %>%
-    summarize(fit=mean(fit)) %>%
-    gather(var, val, -drought_cat) %>%
-    spread(drought_cat, val) %>%
-    mutate(drought = drought - normal,
-           severe = severe - normal,
-           normal = NULL)
+									df %>% mutate(drought_cat='drought'),
+								  df %>% mutate(drought_cat='normal'))
+	  
+	pred <- predict(mod, df, se.fit=TRUE)
+	  
+  df$fit <- logit2prob(pred$fit)
+	df$min <- logit2prob(pred$fit + pred$se.fit*qnorm(0.025, 0, 1))
+	df$max <- logit2prob(pred$fit + pred$se.fit*qnorm(0.975, 0, 1))
+			  
+	df %>%
+		group_by(drought_cat) %>%
+		summarize(fit=mean(fit),
+							min=mean(min),
+							max=mean(max)) %>%
+		gather(var, val, -drought_cat) %>%
+		spread(drought_cat, val) %>%
+		mutate(drought = drought - normal,
+					 severe = severe - normal,
+					 normal = NULL)
+}
 
-	return(df)
+getLogOdds <- function(mod){
+  if ('lm' %in% class(mod)){
+    m <- coef(summary(mod))[, 1]
+  }
+  if ('gam' %in% class(mod)){
+    m <- summary(mod)$p.coef
+  }
+  m <- m[names(m) %in% c('drought_catdrought', 'drought_catsevere')]
+  return(m)
 }
 
 getPvals <- function(mod){
-	m <- coef(summary(mod))[, 4]
-	m <- m[names(m) %in% c('drought_catdrought', 'drought_catsevere')]
-	return(m)
+  if ('lm' %in% class(mod)){
+    m <- coef(summary(mod))[, 4]
+  }
+  if ('gam' %in% class(mod)){
+    m <- summary(mod)$p.pv
+  }
+  m <- m[names(m) %in% c('drought_catdrought', 'drought_catsevere')]
+  return(m)
 }
 
-derive_legendre <- function(x, y, n){
-	#Given X and Y coords and an Nth order,
-	#Derive the Legendre polynomials, a la Cools, et al 2020
+getMoransI <- function(sel, mod){
+  resid <- residuals(mod)
 
-	#Derive Legende polynomials
-	legcoef <- legendre.polynomials(n=n, normalized=TRUE)
-	leg <- as.data.frame(c(polynomial.values(polynomials=legcoef, 
-																						x=scaleX(dat$longitude, u=-1, v=1)), 
-													polynomial.values(polynomials=legcoef, 
-																						x=scaleX(dat$latitude, u=-1, v=1))))
-	names(leg) <- c(paste0("leg", 0:n, "x"),
-									paste0("leg", 0:n, "y"))
+  sel$residual <- resid
+  
+  resid_sum <- sel %>%
+    mutate(latitude = round(latitude, 0),
+                            longitude = round(longitude, 0)) %>%
+    group_by(latitude, longitude) %>%
+    summarize(residual=mean(residual))
+  
+  dmat <- as.matrix(dist(resid_sum[ , c('longitude', 'latitude')]))
+  dmat <- 1/dmat
+  diag(dmat) <- 0
 
-	for (l in 0:n){
-		for (k in 0:n){
-			leg[ paste0('l', l, 'k', k)] <- leg[ , paste0('leg', l, 'x')]*leg[ , paste0('leg', k, 'y')]
-		}
-	}
-	
-	leg <- leg %>% select(-matches('leg'))
-	
-	return(leg)
+  mi <- data.frame(Moran.I(resid_sum$residual, dmat))
+
+  return(mi$p.value)
 }
 
 #####################################
@@ -120,10 +96,6 @@ derive_legendre <- function(x, y, n){
 dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
   mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
 
-
-dat <- cbind(dat, derive_legendre(dat$longtiude, 
-																	 dat$latitude,
-																	 n=6))
 
 dat$in_plos_paper <- dat$survey_code %in% c("SL-6-1", "TG-6-1", "BJ-7-1", "CI-6-1", "CM-6-1",
                                             "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1",
@@ -143,18 +115,18 @@ dat$survey_code <- as.character(dat$survey_code)
 ########################################
 #Get AMEs
 ########################################
-mods <- list.files(mod_dir, pattern='mod')
+mods <- list.files(mod_dir, pattern='gam|plos.RDS$')
 
 mdf <- data.frame(file=mods, stringsAsFactors=F) %>%
 	mutate(outcome = case_when(grepl('phys', file) ~ 'phys',
 														 grepl('sex', file) ~ 'sex',
 														 grepl('cont', file) ~ 'cont',
 														 grepl('emot', file) ~ 'emot'),
-				 order = str_extract(file, '\\d'),
-				 order = ifelse(is.na(order), "0", order),
+				 order = as.numeric(str_extract(file, '\\d+')),
+				 order = ifelse(is.na(order), 0, order),
 				 model = case_when(grepl('plos.RDS', file) ~ 'plos',
-													 grepl('allvars...RDS', file) ~ 'allvars',
-													 grepl('cools...RDS', file) ~ 'cools'),
+													 grepl('allvars', file) ~ 'gam-allvars',
+													 TRUE ~ 'gam'),
 				 scale = case_when(grepl('afr', file) ~ 'afr',
 													 grepl('cty', file) ~ 'cty',
 													 grepl('all_', file) ~ 'all',
@@ -162,45 +134,60 @@ mdf <- data.frame(file=mods, stringsAsFactors=F) %>%
 	arrange(outcome, model, scale, order) %>%
 	group_by(outcome, model, scale) %>%
 	filter(order==max(order)) %>%
+  mutate(drought=NA,
+         severe=NA,
+         drought.pval=NA,
+         severe.pval=NA) %>%
 	data.frame
 
 for (i in 1:nrow(mdf)){
   print(mdf$file[i])
 	
 	mod <- readRDS(file=file.path(mod_dir, mdf$file[i]))
- 
-	#Skip old mods without interaction terms
-	if ('l0k0' %in% names(mod$coefficients) & !("survey_codeSL-6-1:l0k0" %in% names(mod$coefficients))){
-		next
-	}
+	
+   if (mdf$scale[i]=='all'){
+     sel <- dat
+   }
+   if (mdf$scale[i]=='afr'){
+     sel <- dat %>% filter(in_afr)
+   }
+   if (mdf$scale[i]=='cty'){
+     sel <- dat %>% filter(in_cty)
+   }
+   if (mdf$scale[i]=='plos'){
+     sel <- dat %>% filter(in_plos_paper)
+   }
+   
+#   me <- getAME(mod, sel)
+#   
+# 	mdf$drought[i] <- me$drought[1]
+# 	mdf$severe[i] <- me$severe[1]
 
-  if (mdf$scale[i]=='all'){
-    sel <- dat
-  }
-  if (mdf$scale[i]=='afr'){
-    sel <- dat %>% filter(in_afr)
-  }
-  if (mdf$scale[i]=='cty'){
-    sel <- dat %>% filter(in_cty)
-  }
-  if (mdf$scale[i]=='plos'){
-    sel <- dat %>% filter(in_plos_paper)
-  }
+  coef <- getLogOdds(mod)
   
-  me <- getAME(mod, sel)
-  
-	mdf$drought[i] <- me$drought
-	mdf$severe[i] <- me$severe
+  mdf$drought[i] <- coef['drought_catdrought']
+  mdf$severe[i] <- coef['drought_catsevere']
 
 	ps <- getPvals(mod)
 
 	mdf$drought.pval[i] <- ps['drought_catdrought']
 	mdf$severe.pval[i] <- ps['drought_catsevere']
+  mdf$moran.pval[i] <- getMoransI(sel, mod)
+  
+}
+
+
+for (i in 1:nrow(mdf)){
+  print(mdf$file[i])
+	
+	mod <- readRDS(file=file.path(mod_dir, mdf$file[i]))
+  mdf$AIC[i] <- AIC(mod)
 }
 
 allm <- mdf %>%
 	select(-order) %>%
-  gather(drought, value, -file, -outcome, -model, -scale) %>%
+  filter(grepl('allvars', file)) %>%
+  gather(drought, value, -file, -outcome, -model, -scale, -moran.pval) %>%
   mutate(outcome = factor(outcome,
                           levels=c('cont', 'emot', 'phys', 'sex'),
                           labels=paste0(c('Controlling', 'Emotional', 'Physical', 'Sexual'),
@@ -221,10 +208,10 @@ allm <- mdf %>%
                            Pvalue > 0.001 ~ '**',
                            TRUE ~ '***'))
 
-allm$outcome <- paste0(allm$outcome, '-', allm$model)
+allm$outcome <- paste0(allm$model, '-', allm$outcome)
 
-ggplot(allm) + 
-  geom_bar(aes(x=drought, y=AME, fill=drought), stat='identity',
+res <- ggplot(allm) + 
+  geom_bar(aes(x=drought, y=AME, fill=drought, color=moran.pval > 0.01), stat='identity',
            show.legend=F) +
   #geom_errorbar(aes(x=drought, ymin=min, ymax=max)) +
   geom_text(aes(x=drought, y=AME + 0.002, label=stars)) + 
@@ -234,7 +221,7 @@ ggplot(allm) +
   theme_bw() + 
   labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 
-ggsave('C://Users/matt/ipv-rep-tex/img/mod_results.pdf', width=6, height=6)
+ggsave(res <- '~/ipv-rep-tex/img/mod_results_new.pdf', width=6, height=6)
 
 ############################
 # Make texreg results
