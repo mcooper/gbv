@@ -97,21 +97,6 @@ dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
   mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
 
 
-dat$in_plos_paper <- dat$survey_code %in% c("SL-6-1", "TG-6-1", "BJ-7-1", "CI-6-1", "CM-6-1",
-                                            "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1",
-                                            "UG-7-2", "KE-7-1", "TZ-7-2", "MW-7-2", "MZ-6-1",
-                                            "ZW-7-1", "ZM-6-1", "NM-6-1", "AO-7-1")
-
-dat$in_cty <- dat$country %in% c("SL", "TG", "BJ", "CI", "CM",
-                                 "GA", "TD", "CD", "RW", "BU", 
-                                 "UG", "KE", "TZ", "MW", "MZ",
-                                 "ZW", "ZM", "NM", "AO")
-
-dat$in_afr <- dat$latitude < 23 & dat$longitude > -20 & dat$longitude < 50
-
-dat$survey_code <- as.character(dat$survey_code)
-
-
 ########################################
 #Get AMEs
 ########################################
