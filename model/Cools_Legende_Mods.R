@@ -1,3 +1,10 @@
+#######################################################
+# New approach to Legendre mods
+# Just do 0 to 3
+# At all scales
+# Don't test Moran's I, just do it and report results
+#######################################################
+
 if (Sys.info()['sysname']=='Linux'){
   data_dir <- '/home/mattcoop/mortalityblob/gbv'
   meta_dir <- '/home/mattcoop/gbv'
@@ -77,41 +84,35 @@ getMoransI <- function(data, residuals){
 	return(mi$p.value)
 }
 
-runModelUntilNoSA <- function(savename, data, allvars=TRUE, start=1, end=6){
+runModel <- function(savename, data, start=0, end=3){
 	#Run a model, adding higher and higher Legendre polynomials,
-	#until there is no more spatial autocorrelation
-	#Then save the final model
-	
-	if (grepl('all', savename)){
-		data <- data
-	}
-	if (grepl('plos', savename)){
-		data <- data %>% filter(in_plos_paper)
-	}
-	if (grepl('cty', savename)){
-		data <- data %>% filter(in_cty)
-	}
-	if (grepl('afr', savename)){
-		data <- data %>% filter(in_afr)
-	}
+	#Saving each model
 
-	outcome <- paste0('viol_', substr(savename, 1, gregexpr('_mod', savename)[[1]][1] - 1))
+	if (!grepl('all', savename)){
+    code <- substr(savename, 6, 9)
+    col <- names(dat)[grepl(code, names(dat))]
+    data <- data[data[ , col], ]
+  }
 
-	SA <- TRUE
-	i <- start
-	while (SA & i <= end){
-		cat(savename, ': Running with', i, 'order polynomial \n')
+	outcome <- paste0('viol_', substr(savename, 1, 4))
+  for (i in start:end){
+    cat(as.character(Sys.time()), savename, ': Running with', i, 'order polynomial\n')
+    
+    if (i == 0){
+      fe <- ''
+    }
 
 		fe <- crossing(l=0:i, k=0:i) %>%
 			rowwise() %>%
-			mutate(var = paste0(' + survey_code*l', l, 'k', k))
+			mutate(var = paste0(' + survey_code*l', l, 'k', k)) %>%
+      filter(!(l==0 & k==0))
 
 		form <- paste0(outcome, 
-									ifelse(allvars, ' ~ plos_age + woman_literate + is_married + 
+									' ~ plos_age + woman_literate + is_married + 
 																			plos_births + plos_hhsize + 
 																			plos_rural + husband_education_level + 
-																			plos_husband_age + drought_cat',
-																		' ~ drought_cat'),
+																			plos_husband_age + drought_cat + 
+                                      survey_code',
 								paste0(fe$var, collapse=''))
 		
 		X <- model.matrix(as.formula(form), data)
@@ -121,21 +122,11 @@ runModelUntilNoSA <- function(savename, data, allvars=TRUE, start=1, end=6){
 									 data=data, 
 									 family=binomial(link = 'logit'),
 									 method=3)
-		
-		mi <- getMoransI(data, residuals(mod))
-		cat(savename, ': \t\tMorans I of', mi, '\n')
 			
-		saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', 
-												savename, 
-												ifelse(allvars, '_cools_allvars_', '_cools_'),
+		saveRDS(mod, paste0('~/mortalityblob/gbv_gams/legendre2/', 
+												savename, '_',
 												i, '.RDS'))
 		
-		if (mi > 0.01){
-			SA <- FALSE
-		}	
-
-		i <- i + 1
-
 	}
 
 }
@@ -149,41 +140,27 @@ dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
 
 dat <- cbind(dat, derive_legendre(dat$longtiude, 
 																	 dat$latitude,
-																	 n=10))
-
-dat$in_plos_paper <- dat$survey_code %in% c("SL-6-1", "TG-6-1", "BJ-7-1", "CI-6-1", "CM-6-1",
-                                            "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1",
-                                            "UG-7-2", "KE-7-1", "TZ-7-2", "MW-7-2", "MZ-6-1",
-                                            "ZW-7-1", "ZM-6-1", "NM-6-1", "AO-7-1")
-
-dat$in_cty <- dat$country %in% c("SL", "TG", "BJ", "CI", "CM",
-                                 "GA", "TD", "CD", "RW", "BU", 
-                                 "UG", "KE", "TZ", "MW", "MZ",
-                                 "ZW", "ZM", "NM", "AO")
-
-dat$in_afr <- dat$latitude < 23 & dat$longitude > -20 & dat$longitude < 50
+																	 n=3))
 
 dat$survey_code <- as.character(dat$survey_code)
 
 ############################################################
 # Run global models
 ###############################################################
-
-mods <- c(#'phys_mod_plos', 'sex_mod_plos', 'emot_mod_plos', 'cont_mod_plos', 
-					#'phys_mod_cty', 'sex_mod_cty', 'emot_mod_cty', 'cont_mod_cty', 
-					#'phys_mod_afr', 'sex_mod_afr', 'emot_mod_afr', 'cont_mod_afr',
-					'phys_mod_all', 'sex_mod_all', 'emot_mod_all', 'cont_mod_all')
-
-
-for(mod in mods){
-	runModelUntilNoSA(mod, dat, allvars=F)
-}
+mods <- c("cont_all", "sexu_all", "phys_all", "emot_all", 
+  "cont_afr", "sexu_afr", "phys_afr", "emot_afr", 
+  "cont_asi", "sexu_asi", "phys_asi", "emot_asi",
+  "cont_lac", "sexu_lac", "phys_lac", "emot_lac",
+  "cont_cty", "sexu_cty", "phys_cty", "emot_cty",
+  "cont_pap", "sexu_pap", "phys_pap", "emot_pap")   
 
 for(mod in mods){
-	runModelUntilNoSA(mod, dat, allvars=T)
+	runModel(mod, dat)
+
+  system(paste0('~/telegram.sh "', mod, ' Done"'))
 }
 
-system('~/telegram.sh "Models Done~"')
+system('~/telegram.sh "ALL MODELS DONE"')
 
 
 system('poweroff')

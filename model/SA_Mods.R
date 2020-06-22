@@ -39,10 +39,10 @@ getMoransI <- function(data, residuals){
 	data$residual <- residuals
 	
 	resid_sum <- data %>%
-		mutate(latitude = round(latitude, 0),
-					 longitude = round(longitude, 0)) %>%
-		group_by(latitude, longitude) %>%
-		summarize(residual=mean(residual))
+		group_by(GDLcode) %>%
+		summarize(residual=mean(residual),
+              latitude=median(latitude, na.rm=T),
+              longitude=median(longitude, na.rm=T))
 
 	dmat <- as.matrix(dist(resid_sum[ , c('longitude', 'latitude')]))
 	dmat <- 1/dmat
@@ -73,7 +73,7 @@ runModelUntilNoSA <- function(savename, data, knots=c(50, 100, 500, 1000, 2500, 
 	SA <- TRUE
 	for (k in knots){
 		if(SA){
-			cat(Sys.time(), '-', savename, ': Running with', k, 'knot spline \n')
+			cat(as.character(Sys.time()), '-', savename, ': Running with', k, 'knot spline \n')
 
 			form <- paste0(outcome, 
 										 ' ~ plos_age + woman_literate + is_married + 
@@ -87,7 +87,7 @@ runModelUntilNoSA <- function(savename, data, knots=c(50, 100, 500, 1000, 2500, 
 								 family=binomial(link = 'logit'))#, cluster=cl)
 			
 			mi <- getMoransI(data, residuals(mod))
-			cat(Sys.time(), '-', savename, ': \t\tMorans I of', mi, '\n')
+			cat(as.character(Sys.time()), '-', savename, ': \t\tMorans I of', mi, '\n')
 				
 			saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', 
 													savename, 
@@ -117,15 +117,16 @@ dat$survey_code <- as.character(dat$survey_code)
 mods <- c('phys_afr', 
 					'sexu_afr', 
           'emot_afr', 
-					'cont_afr',
+					#'cont_afr',
           'phys_lac', 
 					'sexu_lac', 
           'emot_lac', 
-					'cont_lac',
+					#'cont_lac',
 					'phys_asi', 
 					'sexu_asi', 
-          'emot_asi', 
-					'cont_asi')
+          'emot_asi'#, 
+					#'cont_asi',
+          )
 
 
 for(mod in mods){

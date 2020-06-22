@@ -7,7 +7,7 @@ if (Sys.info()['sysname']=='Linux'){
 }
 
 library(tidyverse)
-
+library(sf)
 dat <- read.csv(file.path(data_dir, 'GBV_all.csv'))
 
 dat$drought_cat <- cut(dat$perc12, breaks = c(0, 0.025, 0.1, 0.3, 1), 
@@ -42,5 +42,13 @@ sel$in_cty <- sel$country %in% c("SL", "TG", "BJ", "CI", "CM",
 sel$in_afr <- sel$latitude < 23 & sel$longitude > -20 & sel$longitude < 50
 sel$in_lac <- sel$longitude < -30
 sel$in_asia <- sel$longitude > 51
+
+#Add GDL Admin ares
+sp <- read_sf('~', 'GDL Shapefiles V4')
+selsp <- st_as_sf(sel, coords=c('longitude', 'latitude'), remove=F) %>%
+  st_set_crs(4326)
+
+sel <- st_join(selsp, sp[ , 'GDLcode']) %>%
+  st_drop_geometry
 
 write.csv(sel, file.path(data_dir, 'GBV_sel.csv'), row.names=F)
