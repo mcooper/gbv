@@ -1,14 +1,9 @@
-if (Sys.info()['sysname']=='Linux'){
-  data_dir <- '/home/mattcoop/mortalityblob/gbv'
-  meta_dir <- '/home/mattcoop/gbv'
-	mod_dir <- '/home/mattcoop/mortalityblob/gbv_gams'
-} else if(Sys.info()['sysname']=='Windows'){
-  data_dir <- 'G://My Drive/GBV'
-  meta_dir <- 'C://Users/matt/gbv'
-}
+data_dir <- '/home/mattcoop/mortalityblob/gbv'
+meta_dir <- '/home/mattcoop/gbv'
+mod_dir <- '/home/mattcoop/mortalityblob/gbv_gams/legendre2/'
 
 library(tidyverse)
-library(mgcv)
+library(fastglm)
 library(broom)
 library(ape)
 
@@ -54,6 +49,9 @@ getLogOdds <- function(mod){
   if ('gam' %in% class(mod)){
     m <- summary(mod)$p.coef
   }
+  if ('fastglm' %in% class(mod)){
+    m <- coef(mod)
+  }
   m <- m[names(m) %in% c('drought_catextreme', 'drought_catmoderate', 'drought_catsevere')]
   return(m)
 }
@@ -64,6 +62,9 @@ getPvals <- function(mod){
   }
   if ('gam' %in% class(mod)){
     m <- summary(mod)$p.pv
+  }
+  if ('fastglm' %in% class(mod)){
+    m <- summary(mod)$coefficients[ , 4]
   }
   m <- m[names(m) %in% c('drought_catextreme', 'drought_catmoderate', 'drought_catsevere')]
   return(m)
@@ -103,8 +104,9 @@ dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
 mods <- list.files(mod_dir)
 
 mdf <- data.frame(file=mods, stringsAsFactors=F) %>%
+  filter(grepl('afr|asi|lac', file)) %>%
 	mutate(outcome = substr(file, 1, 4),
-				 order = as.numeric(substr(file, 10, 14)),
+				 order = as.numeric(substr(file, 10, 10)),
 				 model = "cools",
 				 scale = substr(file, 6, 8)) %>%
 	arrange(outcome, model, scale, order) %>%
@@ -129,11 +131,11 @@ for (i in 1:nrow(mdf)){
    if (mdf$scale[i]=='afr'){
      sel <- dat %>% filter(in_afr)
    }
-   if (mdf$scale[i]=='cty'){
-     sel <- dat %>% filter(in_cty)
+   if (mdf$scale[i]=='lac'){
+     sel <- dat %>% filter(in_lac)
    }
-   if (mdf$scale[i]=='plos'){
-     sel <- dat %>% filter(in_plos_paper)
+   if (mdf$scale[i]=='asi'){
+     sel <- dat %>% filter(in_asia)
    }
    
   coef <- getLogOdds(mod)
@@ -170,7 +172,8 @@ allm <- mdf %>%
   mutate(stars = case_when(Pvalue > 0.05 ~ '',
                            Pvalue > 0.01 ~ '*',
                            Pvalue > 0.001 ~ '**',
-                           TRUE ~ '***'))
+                           TRUE ~ '***'), 
+         drought = factor(drought, levels=c('moderate', 'severe', 'extreme')))
 
 res <- ggplot(allm) + 
   geom_bar(aes(x=drought, y=AME, fill=drought), stat='identity',
@@ -178,12 +181,12 @@ res <- ggplot(allm) +
   #geom_errorbar(aes(x=drought, ymin=min, ymax=max)) +
   geom_text(aes(x=drought, y=AME + 0.002, label=stars)) + 
   facet_grid(outcome ~ scale) + 
-  #scale_fill_manual(values=c('#ff7f00', '#e41a1c')) +
+  scale_fill_manual(values=c('#fe9929', '#d95f0e', '#993404')) +
   scale_y_continuous(limits=c(min(allm$AME), max(allm$AME) + 0.004), sec.axis = ) + 
   theme_bw() + 
   labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 
-ggsave(res <- '~/ipv-rep-tex/img/mod_results_new.pdf', width=6, height=6)
+ggsave(plot=res, filename='~/ipv-rep-tex/img/mod_results_legendre.pdf', width=6, height=6)
 
 ############################
 # Make texreg results

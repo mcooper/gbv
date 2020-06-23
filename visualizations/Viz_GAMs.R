@@ -1,11 +1,6 @@
-if (Sys.info()['sysname']=='Linux'){
-  data_dir <- '/home/mattcoop/mortalityblob/gbv'
-  meta_dir <- '/home/mattcoop/gbv'
-	mod_dir <- '/home/mattcoop/mortalityblob/gbv_gams'
-} else if(Sys.info()['sysname']=='Windows'){
-  data_dir <- 'G://My Drive/GBV'
-  meta_dir <- 'C://Users/matt/gbv'
-}
+data_dir <- '/home/mattcoop/mortalityblob/gbv'
+meta_dir <- '/home/mattcoop/gbv'
+mod_dir <- '/home/mattcoop/mortalityblob/gbv_gams/gam_splines/'
 
 library(tidyverse)
 library(mgcv)
@@ -170,7 +165,8 @@ allm <- mdf %>%
   mutate(stars = case_when(Pvalue > 0.05 ~ '',
                            Pvalue > 0.01 ~ '*',
                            Pvalue > 0.001 ~ '**',
-                           TRUE ~ '***'))
+                           TRUE ~ '***'),
+         drought = factor(drought, levels=c('moderate', 'severe', 'extreme')))
 
 res <- ggplot(allm) + 
   geom_bar(aes(x=drought, y=AME, fill=drought), stat='identity',
@@ -178,12 +174,12 @@ res <- ggplot(allm) +
   #geom_errorbar(aes(x=drought, ymin=min, ymax=max)) +
   geom_text(aes(x=drought, y=AME + 0.002, label=stars)) + 
   facet_grid(outcome ~ scale) + 
-  #scale_fill_manual(values=c('#ff7f00', '#e41a1c')) +
+  scale_fill_manual(values=c('#fe9929', '#d95f0e', '#993404')) +
   scale_y_continuous(limits=c(min(allm$AME), max(allm$AME) + 0.004), sec.axis = ) + 
   theme_bw() + 
   labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 
-ggsave(res <- '~/ipv-rep-tex/img/mod_results_new.pdf', width=6, height=6)
+ggsave(plot=res, filename='~/ipv-rep-tex/img/mod_results_gams.pdf', width=6, height=6)
 
 ############################
 # Make texreg results

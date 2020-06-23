@@ -7,78 +7,120 @@ if (Sys.info()['sysname']=='Linux'){
 }
 
 library(tidyverse)
-library(broom)
+library(fastglm)
 library(texreg)
+library(ape)
+library(orthopolynom)
+
+#############################
+# Define Helper Functions
+#############################
+
+runModel <- function(savename, data){
+	#Run a GLM model
+  #Based on given parameters
+  #Then save the final model
+	
+	if (grepl('lac', savename)){
+		data <- data %>% filter(in_lac)
+	}
+	if (grepl('cty', savename)){
+		data <- data %>% filter(in_cty)
+	}
+	if (grepl('afr', savename)){
+		data <- data %>% filter(in_afr)
+	}
+
+	outcome <- paste0('viol_', substr(savename, 1, gregexpr('_mod', savename)[[1]][1] - 1))
+
+	SA <- TRUE
+	i <- start
+	while (SA & i <= end){
+		cat(savename, ': Running with', i, 'order polynomial \n')
+
+		fe <- crossing(l=0:i, k=0:i) %>%
+			rowwise() %>%
+			mutate(var = paste0(' + survey_code*l', l, 'k', k))
+
+		form <- paste0(outcome, 
+									ifelse(allvars, ' ~ plos_age + woman_literate + is_married + 
+																			plos_births + plos_hhsize + 
+																			plos_rural + husband_education_level + 
+																			plos_husband_age + drought_cat',
+																		' ~ drought_cat'),
+								paste0(fe$var, collapse=''))
+		
+		X <- model.matrix(as.formula(form), data)
+	
+		mod <- fastglm(x=X, 
+									 y=as.numeric(data[ , outcome]), 
+									 data=data, 
+									 family=binomial(link = 'logit'),
+									 method=3)
+		
+		mi <- getMoransI(data, residuals(mod))
+		cat(savename, ': \t\tMorans I of', mi, '\n')
+			
+		saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', 
+												savename, 
+												ifelse(allvars, '_cools_allvars_', '_cools_'),
+												i, '.RDS'))
+		
+		if (mi > 0.01){
+			SA <- FALSE
+		}	
+
+		i <- i + 1
+
+	}
+
+}
+
+##########################################################
+# Read in and process data
+#########################################################
 
 dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
   mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
 
-phys_mod_all <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')
-sex_mod_all <- glm(viol_sex ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                     plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')
-emot_mod_all <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')
-cont_mod_all <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat, family = 'binomial')
+dat <- cbind(dat, derive_legendre(dat$longtiude, 
+																	 dat$latitude,
+																	 n=10))
 
-####################################################
-#Mark data from PLOS article regress only that data
-#####################################################
 dat$in_plos_paper <- dat$survey_code %in% c("SL-6-1", "TG-6-1", "BJ-7-1", "CI-6-1", "CM-6-1",
-                                            "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1", 
+                                            "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1",
                                             "UG-7-2", "KE-7-1", "TZ-7-2", "MW-7-2", "MZ-6-1",
                                             "ZW-7-1", "ZM-6-1", "NM-6-1", "AO-7-1")
 
-phys_mod_plos <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                       plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_plos_paper), family = 'binomial')
-sex_mod_plos <- glm(viol_sex ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_plos_paper), family = 'binomial')
-emot_mod_plos <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                       plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_plos_paper), family = 'binomial')
-cont_mod_plos <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                       plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_plos_paper), family = 'binomial')
-
-####################################################
-#See if it's an effect specific to those countries
-#####################################################
 dat$in_cty <- dat$country %in% c("SL", "TG", "BJ", "CI", "CM",
                                  "GA", "TD", "CD", "RW", "BU", 
                                  "UG", "KE", "TZ", "MW", "MZ",
                                  "ZW", "ZM", "NM", "AO")
 
-phys_mod_cty <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_cty), family = 'binomial')
-sex_mod_cty <- glm(viol_sex ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                     plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_cty), family = 'binomial')
-emot_mod_cty <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_cty), family = 'binomial')
-cont_mod_cty <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_cty), family = 'binomial')
-
-####################################################
-#See if it's an Africa specific effect
-#####################################################
 dat$in_afr <- dat$latitude < 23 & dat$longitude > -20 & dat$longitude < 50
 
+dat$survey_code <- as.character(dat$survey_code)
 
-phys_mod_afr <- glm(viol_phys ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
-sex_mod_afr <- glm(viol_sex ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                     plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
-emot_mod_afr <- glm(viol_emot ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
-cont_mod_afr <- glm(viol_cont ~ plos_age + woman_literate + is_married + plos_births + plos_hhsize + 
-                      plos_rural + husband_education_level + plos_husband_age + country + drought_cat, data=dat %>% filter(in_afr), family = 'binomial')
+############################################################
+# Run global models
+###############################################################
+
+mods <- c(#'phys_mod_plos', 'sex_mod_plos', 'emot_mod_plos', 'cont_mod_plos', 
+					#'phys_mod_cty', 'sex_mod_cty', 'emot_mod_cty', 'cont_mod_cty', 
+					#'phys_mod_afr', 'sex_mod_afr', 'emot_mod_afr', 'cont_mod_afr',
+					'phys_mod_all', 'sex_mod_all', 'emot_mod_all', 'cont_mod_all')
 
 
-########################################
-#Get AMEs
-########################################
-if ('mod' %in% ls()){rm('mod')}
-
-for (mod in ls()[grepl('mod', ls())]){
-  print(mod)
-	
-	saveRDS(eval(parse(text=mod)), file=paste0('~/mortalityblob/gbv_gams/', mod, '_plos.RDS'))
+for(mod in mods){
+	runModelUntilNoSA(mod, dat, allvars=F)
 }
+
+for(mod in mods){
+	runModelUntilNoSA(mod, dat, allvars=T)
+}
+
+system('~/telegram.sh "Models Done~"')
+
+
+system('poweroff')
+
