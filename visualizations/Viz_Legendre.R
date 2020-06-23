@@ -158,14 +158,12 @@ allm <- mdf %>%
   gather(drought, value, -file, -outcome, -model, -scale) %>%
   mutate(outcome = factor(outcome,
                           levels=c('cont', 'emot', 'phys', 'sexu'),
-                          labels=paste0(c('Controlling', 'Emotional', 'Physical', 'Sexual'),
-                                        '\nViolence')),
-        #  scale = factor(scale,
-        #                 levels=c('plos', 'cty', 'afr', 'all'),
-        #                 labels=c('Previous\n Analysis\n(n=83,970)', 
-				# 												 'Previous\nCountries\nMore Surveys\n(n=123,488)',
-				# 												 'All\nAfrican\nSurveys\n(n=194,820)', 
-				# 												 'All\nAvailable\nSurveys\n(n=380,100)')),
+                          labels=c('Controlling\nBehaviors', 'Emotional\nViolence', 'Physical\nViolence', 'Sexual\nViolence')),
+         scale = factor(scale,
+                        levels=c('afr', 'asi', 'lac'),
+                        labels=c('SSA\n(n=194,820)', 
+																 'Asia\n(n=100,647)',
+																 'LAC\n(n=67,961)')),
          var = ifelse(grepl('pval', drought), 'Pvalue', 'AME'), 
 				 drought = gsub('.pval', '', drought)) %>%
 	spread(var, value) %>%
