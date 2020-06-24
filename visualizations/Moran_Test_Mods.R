@@ -46,6 +46,7 @@ dmats <- expand.grid(list(scale=c("code", 'dd', 'GDLcode'),
                      stringsAsFactors=F)
 
 for (i in 1:nrow(dmats)){
+  cat("calculating distmat for ", dmats$region[i], '_', dmats$scale[i])
   dat[ , 'scale'] <- dat[ , dmats$scale[i]]
   dat[ , 'region'] <- dat[ , paste0('in_', dmats$region[i])]
 
@@ -76,6 +77,7 @@ save.image('~/mnt/dmats.RData')
 #############################
 
 for (i in 1:nrow(mdf)){
+  cat('calculating Morans I for', mdf$model[i])
   mod <- readRDS(mdf$file[i])
   
   for (scale in c('code', 'dd', 'GDLcode')){
