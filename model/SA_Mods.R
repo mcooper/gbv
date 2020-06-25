@@ -53,11 +53,11 @@ getMoransI <- function(data, residuals){
 	return(mi$p.value)
 }
 
-runModelUntilNoSA <- function(savename, data, knots=c(50, 100, 500, 1000, 2500, 5000)){
+runModel <- function(savename, data, knots=c(100, 500, 1000)){
 	#Run a model, adding more and more knots to the SOS basis function,
 	#until there is no more spatial autocorrelation
 	#Then save the final model
-	
+
 	if (grepl('asi', savename)){
 		data <- data %>% filter(in_asia)
 	}
@@ -70,34 +70,31 @@ runModelUntilNoSA <- function(savename, data, knots=c(50, 100, 500, 1000, 2500, 
 
 	outcome <- paste0('viol_', substr(savename, 1, 4))
 
-	SA <- TRUE
 	for (k in knots){
-		if(SA){
-			cat(as.character(Sys.time()), '-', savename, ': Running with', k, 'knot spline \n')
+    file <- paste0(savename, 
+													'_', substr(100000 + k, 2, 6), '.RDS')
 
-			form <- paste0(outcome, 
-										 ' ~ plos_age + woman_literate + is_married + 
-										plos_births + plos_hhsize + 
-										plos_rural + husband_education_level + 
-										plos_husband_age + drought_cat + survey_code',
-									paste0(' + s(latitude, longitude, bs="sos", k=', k, ')'))
-			
-			mod <- gam(as.formula(form),
-								 data=data, 
-								 family=binomial(link = 'logit'))#, cluster=cl)
-			
-			mi <- getMoransI(data, residuals(mod))
-			cat(as.character(Sys.time()), '-', savename, ': \t\tMorans I of', mi, '\n')
-				
-			saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', 
-													savename, 
-													'_', substr(100000 + k, 2, 6), '_',
-                          round(mi, 4), '.RDS'))
-			
-			if (mi > 0.01){
-				SA <- FALSE
-			}	
-		}
+    if (file %in% list.files('/home/mattcoop/mortalityblob/gbv_gams/gam_splines/')){
+      next
+    }
+
+    cat(as.character(Sys.time()), '-', savename, ': Running with', k, 'knot spline \n')
+
+    form <- paste0(outcome, 
+                   ' ~ plos_age + woman_literate + is_married + 
+                  plos_births + plos_hhsize + 
+                  plos_rural + husband_education_level + 
+                  plos_husband_age + drought_cat + survey_code',
+                paste0(' + s(latitude, longitude, bs="sos", k=', k, ')'))
+    
+    mod <- gam(as.formula(form),
+               data=data, 
+               family=binomial(link = 'logit'))#, cluster=cl)
+    
+    saveRDS(mod, paste0('~/mortalityblob/gbv_gams/gam_splines/', 
+                        savename, 
+                        '_', substr(100000 + k, 2, 6), '.RDS'))
+    
 	}
 }
 
@@ -117,20 +114,20 @@ dat$survey_code <- as.character(dat$survey_code)
 mods <- c('phys_afr', 
 					'sexu_afr', 
           'emot_afr', 
-					#'cont_afr',
+					'cont_afr',
           'phys_lac', 
 					'sexu_lac', 
           'emot_lac', 
-					#'cont_lac',
+					'cont_lac',
 					'phys_asi', 
 					'sexu_asi', 
-          'emot_asi'#, 
-					#'cont_asi',
+          'emot_asi', 
+					'cont_asi'
           )
 
 
 for(mod in mods){
-	runModelUntilNoSA(mod, dat)
+	runModel(mod, dat)
 }
 
 system('~/telegram.sh "Models Done~"')
