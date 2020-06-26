@@ -37,6 +37,10 @@ mdf <- data.frame(file=mods, stringsAsFactors=F) %>%
          sd=NA,
          p.value=NA)
 
+mdf <- bind_rows(mdf %>% mutate(scale='code'),
+                 mdf %>% mutate(scale='dd'),
+                 mdf %>% mutate(scale='GDLcode'))
+
 #################################
 # Generate all distance matrices
 ###################################
@@ -80,26 +84,24 @@ for (i in 1:nrow(mdf)){
   cat('calculating Morans I for', mdf$model[i])
   mod <- readRDS(mdf$file[i])
   
-  for (scale in c('code', 'dd', 'GDLcode')){
-    dat$region <- dat[ , paste0('in_', mdf$region[i])]
-    dat[dat$region , 'residuals'] <- mod$residuals
-    dat$scale <- dat[ , scale]
+  dat$region <- dat[ , paste0('in_', mdf$region[i])]
+  dat[dat$region , 'residuals'] <- mod$residuals
+  dat$scale <- dat[ , mdf$scale[i]]
 
-    sel <- dat %>%
-      filter(region) %>%
-      group_by(scale) %>%
-      summarize(residuals=mean(residuals))
+  sel <- dat %>%
+    filter(region) %>%
+    group_by(scale) %>%
+    summarize(residuals=mean(residuals))
 
-    dmat <- get(paste0(mdf$region[i], '_', mdf$scale[i]))   
-    
-	  mi <- data.frame(Moran.I(sel$residuals, dmat))
+  dmat <- get(paste0(mdf$region[i], '_', mdf$scale[i]))   
+  
+  mi <- data.frame(Moran.I(sel$residuals, dmat))
 
-    mdf$observed[i] <- mi$observed
-    mdf$expected[i] <- mi$expected
-    mdf$sd[i] <- mi$sd
-    mdf$p.value[i] <- mi$p.value
+  mdf$observed[i] <- mi$observed
+  mdf$expected[i] <- mi$expected
+  mdf$sd[i] <- mi$sd
+  mdf$p.value[i] <- mi$p.value
 
-  }
 }
 
 write.csv(mdf, '~/mortalityblob/gbv/moran_results.csv', row.names=F)
