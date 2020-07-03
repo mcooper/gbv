@@ -1,16 +1,5 @@
-if (Sys.info()['sysname']=='Linux'){
-  data_dir <- '/home/mattcoop/mortalityblob/gbv'
-  meta_dir <- '/home/mattcoop/gbv'
-} else if(Sys.info()['sysname']=='Windows'){
-  data_dir <- 'G://My Drive/GBV'
-  meta_dir <- 'C://Users/matt/gbv'
-}
-
 library(tidyverse)
-library(fastglm)
-library(texreg)
-library(ape)
-library(orthopolynom)
+library(mgcv)
 
 #############################
 # Define Helper Functions
@@ -31,48 +20,22 @@ runModel <- function(savename, data){
 		data <- data %>% filter(in_afr)
 	}
 
-	outcome <- paste0('viol_', substr(savename, 1, gregexpr('_mod', savename)[[1]][1] - 1))
+	outcome <- paste0('viol_', substr(savename, 1, 4))
 
-	SA <- TRUE
-	i <- start
-	while (SA & i <= end){
-		cat(savename, ': Running with', i, 'order polynomial \n')
-
-		fe <- crossing(l=0:i, k=0:i) %>%
-			rowwise() %>%
-			mutate(var = paste0(' + survey_code*l', l, 'k', k))
-
-		form <- paste0(outcome, 
-									ifelse(allvars, ' ~ plos_age + woman_literate + is_married + 
-																			plos_births + plos_hhsize + 
-																			plos_rural + husband_education_level + 
-																			plos_husband_age + drought_cat',
-																		' ~ drought_cat'),
-								paste0(fe$var, collapse=''))
-		
-		X <- model.matrix(as.formula(form), data)
-	
-		mod <- fastglm(x=X, 
-									 y=as.numeric(data[ , outcome]), 
-									 data=data, 
-									 family=binomial(link = 'logit'),
-									 method=3)
-		
-		mi <- getMoransI(data, residuals(mod))
-		cat(savename, ': \t\tMorans I of', mi, '\n')
-			
-		saveRDS(mod, paste0('~/mortalityblob/gbv_gams/', 
-												savename, 
-												ifelse(allvars, '_cools_allvars_', '_cools_'),
-												i, '.RDS'))
-		
-		if (mi > 0.01){
-			SA <- FALSE
-		}	
-
-		i <- i + 1
-
-	}
+  form <- paste0(outcome, 
+                ' ~ plos_age + woman_literate + is_married + 
+                                    plos_births + plos_hhsize + 
+                                    plos_rural + husband_education_level + 
+                                    plos_husband_age + drought_cat')
+ 
+  mod <- gam(as.formula(form), 
+                 data=data, 
+                 family=binomial(link = 'logit'),
+                 )
+  
+  saveRDS(mod, paste0('~/mortalityblob/gbv_gams/epstein/', 
+                      savename, 
+                      '_PLOS.RDS'))
 
 }
 
@@ -80,24 +43,8 @@ runModel <- function(savename, data){
 # Read in and process data
 #########################################################
 
-dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
+dat <- read.csv('~/mortalityblob/gbv/GBV_sel.csv') %>%
   mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
-
-dat <- cbind(dat, derive_legendre(dat$longtiude, 
-																	 dat$latitude,
-																	 n=10))
-
-dat$in_plos_paper <- dat$survey_code %in% c("SL-6-1", "TG-6-1", "BJ-7-1", "CI-6-1", "CM-6-1",
-                                            "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1",
-                                            "UG-7-2", "KE-7-1", "TZ-7-2", "MW-7-2", "MZ-6-1",
-                                            "ZW-7-1", "ZM-6-1", "NM-6-1", "AO-7-1")
-
-dat$in_cty <- dat$country %in% c("SL", "TG", "BJ", "CI", "CM",
-                                 "GA", "TD", "CD", "RW", "BU", 
-                                 "UG", "KE", "TZ", "MW", "MZ",
-                                 "ZW", "ZM", "NM", "AO")
-
-dat$in_afr <- dat$latitude < 23 & dat$longitude > -20 & dat$longitude < 50
 
 dat$survey_code <- as.character(dat$survey_code)
 
@@ -105,22 +52,14 @@ dat$survey_code <- as.character(dat$survey_code)
 # Run global models
 ###############################################################
 
-mods <- c(#'phys_mod_plos', 'sex_mod_plos', 'emot_mod_plos', 'cont_mod_plos', 
-					#'phys_mod_cty', 'sex_mod_cty', 'emot_mod_cty', 'cont_mod_cty', 
-					#'phys_mod_afr', 'sex_mod_afr', 'emot_mod_afr', 'cont_mod_afr',
-					'phys_mod_all', 'sex_mod_all', 'emot_mod_all', 'cont_mod_all')
+mods <- c('phys_asi', 'sexu_asi', 'emot_asi', 'cont_asi', 
+					'phys_lac', 'sexu_lac', 'emot_lac', 'cont_lac', 
+					'phys_afr', 'sexu_afr', 'emot_afr', 'cont_afr')
 
 
 for(mod in mods){
-	runModelUntilNoSA(mod, dat, allvars=F)
-}
-
-for(mod in mods){
-	runModelUntilNoSA(mod, dat, allvars=T)
+  print(mod)
+  runModel(mod, dat)
 }
 
 system('~/telegram.sh "Models Done~"')
-
-
-system('poweroff')
-

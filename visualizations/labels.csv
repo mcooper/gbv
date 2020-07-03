@@ -29,3 +29,4 @@ Order,Category,Label,Var
 27,,4 - 5,"plos_hhsize(3,5]"
 28,,> 5,"plos_hhsize(5,48]"
 29,Household is Rural,,plos_rural
+30,Total,,Total

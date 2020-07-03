@@ -34,12 +34,13 @@ africa <- dat %>%
          drought_catnormal = drought_cat == 'normal',
          drought_catmoderate = drought_cat == 'moderate',
          drought_catsevere = drought_cat == 'severe',
-         drought_catextreme = drought_cat == 'extreme') %>%
+         drought_catextreme = drought_cat == 'extreme',
+         Total = TRUE) %>%
   select_if(is.logical) %>%
   gather(Var, Val) %>%
   group_by(Var) %>%
-  summarize(Afr.Percent = paste0(round(mean(Val)*100, 1), '%'),
-            Afr.Count = format(sum(Val), big.mark=','))
+  summarize(Afr.Count = format(sum(Val), big.mark=','),
+            Afr.Percent = paste0('(', round(mean(Val)*100, 1), '%)'))
 
 asia <- dat %>%
   filter(in_asia) %>%
@@ -65,12 +66,13 @@ asia <- dat %>%
          drought_catnormal = drought_cat == 'normal',
          drought_catmoderate = drought_cat == 'moderate',
          drought_catsevere = drought_cat == 'severe',
-         drought_catextreme = drought_cat == 'extreme') %>%
+         drought_catextreme = drought_cat == 'extreme',
+         Total = TRUE) %>%
   select_if(is.logical) %>%
   gather(Var, Val) %>%
   group_by(Var) %>%
-  summarize(Asi.Percent = paste0(round(mean(Val)*100, 1), '%'),
-            Asi.Count = format(sum(Val), big.mark=','))
+  summarize(Asi.Count = format(sum(Val), big.mark=','),
+            Asi.Percent = paste0('(', round(mean(Val)*100, 1), '%)'))
 
 lac <- dat %>%
   filter(in_lac) %>%
@@ -96,12 +98,13 @@ lac <- dat %>%
          drought_catnormal = drought_cat == 'normal',
          drought_catmoderate = drought_cat == 'moderate',
          drought_catsevere = drought_cat == 'severe',
-         drought_catextreme = drought_cat == 'extreme') %>%
+         drought_catextreme = drought_cat == 'extreme',
+         Total = TRUE) %>%
   select_if(is.logical) %>%
   gather(Var, Val) %>%
   group_by(Var) %>%
-  summarize(Lac.Percent = paste0(round(mean(Val)*100, 1), '%'),
-            Lac.Count = format(sum(Val), big.mark=','))
+  summarize(Lac.Count = format(sum(Val), big.mark=','),
+            Lac.Percent = paste0('(', round(mean(Val)*100, 1), '%)'))
 
 #write.csv(summary$Var, 'C://Users/matt/gbv/visualizations/labels.csv', row.names=F)
 labs <- read.csv('~/gbv/visualizations/labels.csv')
@@ -110,9 +113,11 @@ summaryl <- Reduce(merge, list(africa, asia, lac, labs)) %>%
   arrange(Order) %>%
   select(`  `=Category, ` `=Label, matches('Count|Percent'), -Order, -Var)
 
+summaryl[summaryl=='(100%)'] <- ''
+
 hline <- c(-1, 0, which(summaryl$`  ` != '') - 1, nrow(summaryl))
 htype <- c("\\toprule & & \\multicolumn{2}{c}{Africa}& \\multicolumn{2}{c}{Asia}& \\multicolumn{2}{c}{LAC}\\\\",
-           " & & \\multicolumn{1}{c}{\\%} & \\multicolumn{1}{c}{\\textit{n}} & \\multicolumn{1}{c}{\\%} & \\multicolumn{1}{c}{\\textit{n}} & \\multicolumn{1}{c}{\\%} & \\multicolumn{1}{c}{\\textit{n}}\\\\",
+           " & & \\multicolumn{1}{c}{\\textit{n}} & \\multicolumn{1}{c}{\\%} & \\multicolumn{1}{c}{\\textit{n}} & \\multicolumn{1}{c}{\\%} & \\multicolumn{1}{c}{\\textit{n}} & \\multicolumn{1}{c}{\\%}\\\\",
            rep("\\midrule ", sum(summaryl$`  ` != '')), "\\bottomrule ")
 print(xtable(summaryl, 
              caption='Summary of Variables Used in Regressions',
@@ -122,7 +127,8 @@ print(xtable(summaryl,
       hline.after = NULL,
       add.to.row = list(pos = as.list(hline),
                         command = htype),
-      file='~/ipv-rep-tex/tables/variable_summary.tex')
+      file='~/ipv-rep-tex/tables/variable_summary.tex',
+      floating.environment='H')
 
 ########################################
 # Summary of Observations by Country and Year

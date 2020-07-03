@@ -3,7 +3,7 @@ meta_dir <- '/home/mattcoop/gbv'
 mod_dir <- '/home/mattcoop/mortalityblob/gbv_gams/epstein/'
 
 library(tidyverse)
-library(fastglm)
+library(mgcv)
 
 #########################################
 # Define Functions
@@ -15,32 +15,48 @@ logit2prob <- function(logit){
   return(prob)
 }
 
-getAME <- function(mod, df){
-	df$drought_cat <- NULL
-  
-  df <- bind_rows(df %>% mutate(drought_cat='severe'),
-									df %>% mutate(drought_cat='drought'),
-								  df %>% mutate(drought_cat='normal'))
+getAME <- function(mod, df, vars=c('plos_age', 'woman_literate', 'is_married', 
+                                   'plos_births', 'plos_hhsize', 'plos_rural', 
+                                   'husband_education_level', 'plos_husband_age')){
 	  
-	pred <- predict(mod, df, se.fit=TRUE)
-	  
-  df$fit <- logit2prob(pred$fit)
-	df$min <- logit2prob(pred$fit + pred$se.fit*qnorm(0.025, 0, 1))
-	df$max <- logit2prob(pred$fit + pred$se.fit*qnorm(0.975, 0, 1))
-			  
-	df %>%
-		group_by(drought_cat) %>%
-		summarize(fit=mean(fit),
-							min=mean(min),
-							max=mean(max)) %>%
-		gather(var, val, -drought_cat) %>%
-		spread(drought_cat, val) %>%
-		mutate(drought = drought - normal,
-					 severe = severe - normal,
-					 normal = NULL)
+  pred <- predict(mod, df, se=TRUE, type='terms')
+  fit <- data.frame(pred$fit)
+  se.fit <- data.frame(pred$se.fit)
+
+  intercept <- mod$coefficients[1]
+
+  resdf <- data.frame()
+  for (var in vars){
+    for (value in unique(df[ , var])){
+      coef <- unique(fit[df[ , var] == value, var])
+      se <- unique(se.fit[df[ , var] == value, var])
+      
+      null <- fit 
+      null[ , var] <- 0
+      
+      diff <- fit
+      diff[ , var] <- coef
+
+      null.prob <- logit2prob(rowSums(null) + intercept)
+      diff.prob <- logit2prob(rowSums(diff) + intercept)
+      se.prob <- logit2prob(rowSums(diff) + intercept + se)
+
+      ame <- mean(diff.prob - null.prob)
+      ame.se <- mean(se.prob - diff.prob)
+
+      resdf <- bind_rows(resdf,
+                         data.frame(var=as.character(var), 
+                                    value=as.character(value), 
+                                    ame, 
+                                    ame.se,
+                                    z.score=coef/se,
+                                    p.value=2*(pnorm(-abs(coef/se)))) %>%
+                            filter(ame != 0))
+    }
+  }
+
+  return(resdf)
 }
-
-
 
 getLogOdds <- function(mod){
   if ('lm' %in% class(mod)){
@@ -83,16 +99,16 @@ dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
 ########################################
 mods <- list.files(mod_dir)
 
-mdf <- data.frame(file=mods, stringsasfactors=f) %>%
+mdf <- data.frame(file=mods, stringsAsFactors=F) %>%
 	mutate(outcome = substr(file, 1, 4),
 				 model = "plos",
 				 scale = substr(file, 6, 8),
-         extreme=na,
-         moderate=na,
-         severe=na,
-         extreme.pval=na,
-         moderate.pval=na,
-         severe.pval=na) %>%
+         extreme=NA,
+         moderate=NA,
+         severe=NA,
+         extreme.pval=NA,
+         moderate.pval=NA,
+         severe.pval=NA) %>%
 	data.frame
 
 for (i in 1:nrow(mdf)){
@@ -100,38 +116,34 @@ for (i in 1:nrow(mdf)){
 	
 	mod <- readRDS(file=file.path(mod_dir, mdf$file[i]))
 	
-   if (mdf$scale[i]=='all'){
-     sel <- dat
-   }
-   if (mdf$scale[i]=='afr'){
-     sel <- dat %>% filter(in_afr)
-   }
-   if (mdf$scale[i]=='cty'){
-     sel <- dat %>% filter(in_cty)
-   }
-   if (mdf$scale[i]=='plos'){
-     sel <- dat %>% filter(in_plos_paper)
-   }
+  if (mdf$scale[i]=='afr'){
+   sel <- dat %>% filter(in_afr)
+  }
+  if (mdf$scale[i]=='asi'){
+   sel <- dat %>% filter(in_asia)
+  }
+  if (mdf$scale[i]=='lac'){
+   sel <- dat %>% filter(in_lac)
+  }
    
-  coef <- getLogOdds(mod)
+  coef <- getAME(mod, sel, vars='drought_cat')
   
-  mdf$extreme[i] <- coef['drought_catextreme']
-  mdf$severe[i] <- coef['drought_catsevere']
-  mdf$moderate[i] <- coef['drought_catmoderate']
+  mdf$extreme[i] <- coef$ame[coef$value == 'extreme']
+  mdf$severe[i] <- coef$ame[coef$value=='severe']
+  mdf$moderate[i] <- coef$ame[coef$value=='moderate']
 
 	ps <- getPvals(mod)
   
   mdf$moderate.pval[i] <- ps['drought_catmoderate']
 	mdf$extreme.pval[i] <- ps['drought_catextreme']
 	mdf$severe.pval[i] <- ps['drought_catsevere']
-  
 }
 
 allm <- mdf %>%
   gather(drought, value, -file, -outcome, -model, -scale) %>%
   mutate(outcome = factor(outcome,
                           levels=c('cont', 'emot', 'phys', 'sexu'),
-                          labels=paste0(c('controlling', 'emotional', 'physical', 'sexual'),
+                          labels=paste0(c('Controlling', 'Emotional', 'Physical', 'Sexual'),
                                         '\nviolence')),
         #  scale = factor(scale,
         #                 levels=c('plos', 'cty', 'afr', 'all'),
@@ -157,48 +169,6 @@ res <- ggplot(allm) +
   scale_fill_manual(values=c('#fe9929', '#d95f0e', '#993404')) +
   scale_y_continuous(limits=c(min(allm$ame), max(allm$ame) + 0.004), sec.axis = ) + 
   theme_bw() + 
-  labs(x='drought status', y='average marginal effect (probability)')
+  labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 
 ggsave(plot=res, filename='~/ipv-rep-tex/img/mod_results_plos.pdf', width=6, height=6)
-
-############################
-# make texreg results
-############################
-
-labs <- read.csv('c://users/matt/gbv/visualizations/labels.csv')
-
-#physical violence models
-texreg(l=list(phys_mod_plos, phys_mod_cty, phys_mod_afr, phys_mod_all),
-       file='c://users/matt/ipv-rep-tex/tables/phys_mods.tex',
-       custom.model.names = c('mod1', 'mod2', 'mod3', 'mod4'),
-       label='tab:phys_mod',
-       caption="results of models with outcome variable of physical ipv. mod1 refers to a model using the same surveys used by epstein et al \\cite{epstein2020}. mod2 refers to a model using the same countries as epstein et al, but with all available surveys.  mod3 refers to a model with all african countries, and mod4 refers to a model with a global datasets of all dhs countries with ipv data.",
-       longtable=t,
-       use.packages=f)
-
-#sexual violence models
-texreg(l=list(sex_mod_plos, sex_mod_cty, sex_mod_afr, sex_mod_all),
-       file='c://users/matt/ipv-rep-tex/tables/sex_mods.tex',
-       custom.model.names = c('mod1', 'mod2', 'mod3', 'mod4'),
-       label='tab:sex_mod',
-       caption="results of models with outcome variable of sexual ipv. mod1 refers to a model using the same surveys used by epstein et al \\cite{epstein2020}. mod2 refers to a model using the same countries as epstein et al, but with all available surveys.  mod3 refers to a model with all african countries, and mod4 refers to a model with a global datasets of all dhs countries with ipv data.",
-       longtable=t,
-       use.packages=f)
-
-#emotional violence models
-texreg(l=list(emot_mod_plos, emot_mod_cty, emot_mod_afr, emot_mod_all),
-       file='c://users/matt/ipv-rep-tex/tables/emot_mods.tex',
-       custom.model.names = c('mod1', 'mod2', 'mod3', 'mod4'),
-       label='tab:emot_mod',
-       caption="results of models with outcome variable of emotional ipv. mod1 refers to a model using the same surveys used by epstein et al \\cite{epstein2020}. mod2 refers to a model using the same countries as epstein et al, but with all available surveys.  mod3 refers to a model with all african countries, and mod4 refers to a model with a global datasets of all dhs countries with ipv data.",
-       longtable=t,
-       use.packages=f)
-
-#controlling violence models
-texreg(l=list(cont_mod_plos, cont_mod_cty, cont_mod_afr, cont_mod_all),
-       file='c://users/matt/ipv-rep-tex/tables/cont_mods.tex',
-       custom.model.names = c('mod1', 'mod2', 'mod3', 'mod4'),
-       label='tab:cont_mod',
-       caption="results of models with outcome variable of controlling ipv. mod1 refers to a model using the same surveys used by epstein et al \\cite{epstein2020}. mod2 refers to a model using the same countries as epstein et al, but with all available surveys.  mod3 refers to a model with all african countries, and mod4 refers to a model with a global datasets of all dhs countries with ipv data.",
-       longtable=t,
-       use.packages=f)
