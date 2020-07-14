@@ -120,21 +120,20 @@ mdf$extreme <- unlist(mdf$extreme)
 mdf$severe <- unlist(mdf$severe)
 mdf$moderate <- unlist(mdf$moderate)
 
-write.csv(mdf, '~/mortalityblob/gbv/gams_results.csv')
+write.csv(mdf, '~/mortalityblob/gbv/gams_results.csv', row.names=F)
 
 allm <- mdf %>%
 	select(-order, -method, -observed, -expected, -sd, -p.value, -scale) %>%
   gather(drought, value, -file, -outcome, -model, -region) %>%
   mutate(outcome = factor(outcome,
                           levels=c('cont', 'emot', 'phys', 'sexu'),
-                          labels=paste0(c('Controlling', 'Emotional', 'Physical', 'Sexual'),
-                                        '\nViolence')),
-        #  scale = factor(scale,
-        #                 levels=c('plos', 'cty', 'afr', 'all'),
-        #                 labels=c('Previous\n Analysis\n(n=83,970)', 
-				# 												 'Previous\nCountries\nMore Surveys\n(n=123,488)',
-				# 												 'All\nAfrican\nSurveys\n(n=194,820)', 
-				# 												 'All\nAvailable\nSurveys\n(n=380,100)')),
+                          labels=c('Controlling Behaviors', 
+                                          'Emotional Violence', 
+                                          'Physical Violence', 
+                                          'Sexual Violence')),
+         region = factor(region,
+                        levels=c('afr', 'asi', 'lac'),
+                        labels=c("SSA", "Asia", "LAC")),
          var = ifelse(grepl('pval', drought), 'Pvalue', 'AME'), 
 				 drought = gsub('.pval', '', drought)) %>%
 	spread(var, value) %>%
@@ -142,7 +141,8 @@ allm <- mdf %>%
                            Pvalue > 0.01 ~ '*',
                            Pvalue > 0.001 ~ '**',
                            TRUE ~ '***'),
-         drought = factor(drought, levels=c('moderate', 'severe', 'extreme')))
+         drought = factor(drought, levels=c('moderate', 'severe', 'extreme'),
+                          labels=c("Moderate", "Severe", "Extreme")))
 
 res <- ggplot(allm) + 
   geom_bar(aes(x=drought, y=AME, fill=drought), stat='identity',

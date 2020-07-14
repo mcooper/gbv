@@ -143,14 +143,19 @@ allm <- mdf %>%
   gather(drought, value, -file, -outcome, -model, -scale) %>%
   mutate(outcome = factor(outcome,
                           levels=c('cont', 'emot', 'phys', 'sexu'),
-                          labels=paste0(c('Controlling', 'Emotional', 'Physical', 'Sexual'),
-                                        '\nviolence')),
-        #  scale = factor(scale,
+                          labels=c('Controlling Behaviors', 
+                                   'Emotional Violence', 
+                                   'Physical Violence', 
+                                   'Sexual Violence')),
+                          #  scale = factor(scale,
         #                 levels=c('plos', 'cty', 'afr', 'all'),
         #                 labels=c('previous\n analysis\n(n=83,970)', 
 				# 												 'previous\ncountries\nmore surveys\n(n=123,488)',
 				# 												 'all\nafrican\nsurveys\n(n=194,820)', 
 				# 												 'all\navailable\nsurveys\n(n=380,100)')),
+         scale = factor(scale,
+                        levels=c('afr', 'asi', 'lac'),
+                        labels=c("SSA", "Asia", "LAC")),
          var = ifelse(grepl('pval', drought), 'pvalue', 'ame'), 
 				 drought = gsub('.pval', '', drought)) %>%
 	spread(var, value) %>%
@@ -158,7 +163,8 @@ allm <- mdf %>%
                            pvalue > 0.01 ~ '*',
                            pvalue > 0.001 ~ '**',
                            TRUE ~ '***'),
-         drought = factor(drought, levels=c('moderate', 'severe', 'extreme')))
+         drought = factor(drought, levels=c('moderate', 'severe', 'extreme'),
+                          labels=c("Moderate", "Severe", "Extreme")))
 
 res <- ggplot(allm) + 
   geom_bar(aes(x=drought, y=ame, fill=drought), stat='identity',

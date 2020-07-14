@@ -4,8 +4,7 @@ mod_dir <- '/home/mattcoop/mortalityblob/gbv_gams/legendre2/'
 
 library(tidyverse)
 library(fastglm)
-library(broom)
-library(ape)
+library(orthopolynom)
 
 #########################################
 # Define Functions
@@ -21,39 +20,31 @@ getAME <- function(mod, df){
 	df$drought_cat <- NULL
   
   df <- bind_rows(df %>% mutate(drought_cat='severe'),
-									df %>% mutate(drought_cat='drought'),
-								  df %>% mutate(drought_cat='normal'))
+									df %>% mutate(drought_cat='extreme'),
+								  df %>% mutate(drought_cat='normal'),
+								  df %>% mutate(drought_cat='moderate'))
+	
+  form <- paste0(' ~ plos_age + woman_literate + is_married + 
+                          plos_births + plos_hhsize + 
+                          plos_rural + husband_education_level + 
+                          plos_husband_age + drought_cat',
+          fe$var, collapse='')
+
+  X <- model.matrix(as.formula(form), df)
+
+	pred <- predict(mod, df, type='response')
 	  
-	pred <- predict(mod, df, se.fit=TRUE)
-	  
-  df$fit <- logit2prob(pred$fit)
-	df$min <- logit2prob(pred$fit + pred$se.fit*qnorm(0.025, 0, 1))
-	df$max <- logit2prob(pred$fit + pred$se.fit*qnorm(0.975, 0, 1))
+  df$fit <- pred#$fit
 			  
 	df %>%
 		group_by(drought_cat) %>%
-		summarize(fit=mean(fit),
-							min=mean(min),
-							max=mean(max)) %>%
+		summarize(fit=mean(fit)) %>%
 		gather(var, val, -drought_cat) %>%
 		spread(drought_cat, val) %>%
-		mutate(drought = drought - normal,
+		mutate(extreme = extreme - normal,
 					 severe = severe - normal,
+           moderate = moderate - normal,
 					 normal = NULL)
-}
-
-getLogOdds <- function(mod){
-  if ('lm' %in% class(mod)){
-    m <- coef(summary(mod))[, 1]
-  }
-  if ('gam' %in% class(mod)){
-    m <- summary(mod)$p.coef
-  }
-  if ('fastglm' %in% class(mod)){
-    m <- coef(mod)
-  }
-  m <- m[names(m) %in% c('drought_catextreme', 'drought_catmoderate', 'drought_catsevere')]
-  return(m)
 }
 
 getPvals <- function(mod){
@@ -90,13 +81,39 @@ getMoransI <- function(sel, mod){
   return(mi$p.value)
 }
 
+derive_legendre <- function(x, y, n){
+    #Given X and Y coords and an Nth order,
+    #Derive the Legendre polynomials, a la Cools, et al 2020
+
+    #Derive Legende polynomials
+    legcoef <- legendre.polynomials(n=n, normalized=TRUE)
+    leg <- as.data.frame(c(polynomial.values(polynomials=legcoef, 
+    x=scaleX(dat$longitude, u=-1, v=1)), 
+             polynomial.values(polynomials=legcoef, 
+             x=scaleX(dat$latitude, u=-1, v=1))))
+    names(leg) <- c(paste0("leg", 0:n, "x"),
+                    paste0("leg", 0:n, "y"))
+
+    for (l in 0:n){
+          for (k in 0:n){
+                  leg[ paste0('l', l, 'k', k)] <- leg[ , paste0('leg', l, 'x')]*leg[ , paste0('leg', k, 'y')]
+        }
+      }
+      
+      leg <- leg %>% select(-matches('leg'))
+        
+        return(leg)
+}
+
 #####################################
 # Read in Data
 #####################################
 
 dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
-  mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
+  mutate(drought_cat=relevel(drought_cat, ref = 'normal'),
+         survey_code=as.character(survey_code))
 
+dat <- cbind(dat, derive_legendre(dat$longtiude, dat$latitude, n=3))
 
 ########################################
 #Get AMEs
@@ -138,7 +155,7 @@ for (i in 1:nrow(mdf)){
      sel <- dat %>% filter(in_asia)
    }
    
-  coef <- getLogOdds(mod)
+  coef <- getAME(mod, sel)
   
   mdf$extreme[i] <- coef['drought_catextreme']
   mdf$severe[i] <- coef['drought_catsevere']
@@ -173,6 +190,28 @@ allm <- mdf %>%
                            TRUE ~ '***'), 
          drought = factor(drought, levels=c('moderate', 'severe', 'extreme')))
 
+allm <- mdf %>%
+	select(-order, -method, -observed, -expected, -sd, -p.value, -scale) %>%
+  gather(drought, value, -file, -outcome, -model, -region) %>%
+  mutate(outcome = factor(outcome,
+                          levels=c('cont', 'emot', 'phys', 'sexu'),
+                          labels=c('Controlling Behaviors', 
+                                          'Emotional Violence', 
+                                          'Physical Violence', 
+                                          'Sexual Violence')),
+         region = factor(region,
+                        levels=c('afr', 'asi', 'lac'),
+                        labels=c("SSA", "Asia", "LAC")),
+         var = ifelse(grepl('pval', drought), 'Pvalue', 'AME'), 
+				 drought = gsub('.pval', '', drought)) %>%
+	spread(var, value) %>%
+  mutate(stars = case_when(Pvalue > 0.05 ~ '',
+                           Pvalue > 0.01 ~ '*',
+                           Pvalue > 0.001 ~ '**',
+                           TRUE ~ '***'),
+         drought = factor(drought, levels=c('moderate', 'severe', 'extreme'),
+                          labels=c("Moderate", "Severe", "Extreme")))
+
 res <- ggplot(allm) + 
   geom_bar(aes(x=drought, y=AME, fill=drought), stat='identity',
            show.legend=F) +
@@ -185,45 +224,3 @@ res <- ggplot(allm) +
   labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 
 ggsave(plot=res, filename='~/ipv-rep-tex/img/mod_results_legendre.pdf', width=6, height=6)
-
-############################
-# Make texreg results
-############################
-
-labs <- read.csv('C://Users/matt/gbv/visualizations/labels.csv')
-
-#Physical Violence Models
-texreg(l=list(phys_mod_plos, phys_mod_cty, phys_mod_afr, phys_mod_all),
-       file='C://Users/matt/ipv-rep-tex/tables/phys_mods.tex',
-       custom.model.names = c('Mod1', 'Mod2', 'Mod3', 'Mod4'),
-       label='tab:phys_mod',
-       caption="Results of models with outcome variable of Physical IPV. Mod1 refers to a model using the same surveys used by Epstein et al \\cite{Epstein2020}. Mod2 refers to a model using the same countries as Epstein et al, but with all available surveys.  Mod3 refers to a model with all African countries, and Mod4 refers to a model with a global datasets of all DHS countries with IPV data.",
-       longtable=T,
-       use.packages=F)
-
-#Sexual Violence Models
-texreg(l=list(sex_mod_plos, sex_mod_cty, sex_mod_afr, sex_mod_all),
-       file='C://Users/matt/ipv-rep-tex/tables/sex_mods.tex',
-       custom.model.names = c('Mod1', 'Mod2', 'Mod3', 'Mod4'),
-       label='tab:sex_mod',
-       caption="Results of models with outcome variable of Sexual IPV. Mod1 refers to a model using the same surveys used by Epstein et al \\cite{Epstein2020}. Mod2 refers to a model using the same countries as Epstein et al, but with all available surveys.  Mod3 refers to a model with all African countries, and Mod4 refers to a model with a global datasets of all DHS countries with IPV data.",
-       longtable=T,
-       use.packages=F)
-
-#Emotional Violence Models
-texreg(l=list(emot_mod_plos, emot_mod_cty, emot_mod_afr, emot_mod_all),
-       file='C://Users/matt/ipv-rep-tex/tables/emot_mods.tex',
-       custom.model.names = c('Mod1', 'Mod2', 'Mod3', 'Mod4'),
-       label='tab:emot_mod',
-       caption="Results of models with outcome variable of Emotional IPV. Mod1 refers to a model using the same surveys used by Epstein et al \\cite{Epstein2020}. Mod2 refers to a model using the same countries as Epstein et al, but with all available surveys.  Mod3 refers to a model with all African countries, and Mod4 refers to a model with a global datasets of all DHS countries with IPV data.",
-       longtable=T,
-       use.packages=F)
-
-#Controlling Violence Models
-texreg(l=list(cont_mod_plos, cont_mod_cty, cont_mod_afr, cont_mod_all),
-       file='C://Users/matt/ipv-rep-tex/tables/cont_mods.tex',
-       custom.model.names = c('Mod1', 'Mod2', 'Mod3', 'Mod4'),
-       label='tab:cont_mod',
-       caption="Results of models with outcome variable of Controlling IPV. Mod1 refers to a model using the same surveys used by Epstein et al \\cite{Epstein2020}. Mod2 refers to a model using the same countries as Epstein et al, but with all available surveys.  Mod3 refers to a model with all African countries, and Mod4 refers to a model with a global datasets of all DHS countries with IPV data.",
-       longtable=T,
-       use.packages=F)

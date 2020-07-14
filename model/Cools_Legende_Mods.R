@@ -7,6 +7,29 @@ library(fastglm)
 #############################
 # Define Helper Functions
 #############################
+derive_legendre <- function(x, y, n){
+    #Given X and Y coords and an Nth order,
+    #Derive the Legendre polynomials, a la Cools, et al 2020
+
+    #Derive Legende polynomials
+    legcoef <- legendre.polynomials(n=n, normalized=TRUE)
+  leg <- as.data.frame(c(polynomial.values(polynomials=legcoef, 
+                                                                                      x=scaleX(dat$longitude, u=-1, v=1)), 
+                                                  polynomial.values(polynomials=legcoef, 
+                                                                                                                x=scaleX(dat$latitude, u=-1, v=1))))
+    names(leg) <- c(paste0("leg", 0:n, "x"),
+                                      paste0("leg", 0:n, "y"))
+
+    for (l in 0:n){
+          for (k in 0:n){
+                  leg[ paste0('l', l, 'k', k)] <- leg[ , paste0('leg', l, 'x')]*leg[ , paste0('leg', k, 'y')]
+        }
+      }
+      
+      leg <- leg %>% select(-matches('leg'))
+        
+        return(leg)
+}
 
 runModel <- function(savename, data){
 	#Run a GLM model
@@ -53,6 +76,8 @@ runModel <- function(savename, data){
 
 dat <- read.csv(file.path(data_dir, 'GBV_sel.csv')) %>%
   mutate(drought_cat=relevel(drought_cat, ref = 'normal'))
+
+dat <- cbind(dat, derive_legendre(dat$longtiude, dat$latitude, n=10))
 
 ############################################################
 # Run global models
