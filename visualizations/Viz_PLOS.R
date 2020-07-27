@@ -15,47 +15,32 @@ logit2prob <- function(logit){
   return(prob)
 }
 
-getAME <- function(mod, df, vars=c('plos_age', 'woman_literate', 'is_married', 
-                                   'plos_births', 'plos_hhsize', 'plos_rural', 
-                                   'husband_education_level', 'plos_husband_age')){
+getAME <- function(mod, df){
+	df$drought_cat <- NULL
+  
+  df <- bind_rows(df %>% mutate(drought_cat='severe'),
+									df %>% mutate(drought_cat='extreme'),
+								  df %>% mutate(drought_cat='normal'),
+								  df %>% mutate(drought_cat='moderate'))
 	  
-  pred <- predict(mod, df, se=TRUE, type='terms')
-  fit <- data.frame(pred$fit)
-  se.fit <- data.frame(pred$se.fit)
-
-  intercept <- mod$coefficients[1]
-
-  resdf <- data.frame()
-  for (var in vars){
-    for (value in unique(df[ , var])){
-      coef <- unique(fit[df[ , var] == value, var])
-      se <- unique(se.fit[df[ , var] == value, var])
-      
-      null <- fit 
-      null[ , var] <- 0
-      
-      diff <- fit
-      diff[ , var] <- coef
-
-      null.prob <- logit2prob(rowSums(null) + intercept)
-      diff.prob <- logit2prob(rowSums(diff) + intercept)
-      se.prob <- logit2prob(rowSums(diff) + intercept + se)
-
-      ame <- mean(diff.prob - null.prob)
-      ame.se <- mean(se.prob - diff.prob)
-
-      resdf <- bind_rows(resdf,
-                         data.frame(var=as.character(var), 
-                                    value=as.character(value), 
-                                    ame, 
-                                    ame.se,
-                                    z.score=coef/se,
-                                    p.value=2*(pnorm(-abs(coef/se)))) %>%
-                            filter(ame != 0))
-    }
-  }
-
-  return(resdf)
+	pred <- predict(mod, df, se.fit=TRUE, 
+                  type='response')
+	  
+  df$fit <- pred$fit
+	df$min <- pred$fit + pred$se.fit*qnorm(0.025, 0, 1)
+	df$max <- pred$fit + pred$se.fit*qnorm(0.975, 0, 1)
+			  
+	df %>%
+		group_by(drought_cat) %>%
+		summarize(fit=mean(fit),
+							min=mean(min),
+							max=mean(max)) %>%
+		gather(var, val, -drought_cat) %>%
+		spread(drought_cat, val) %>%
+		mutate(extreme = extreme - normal,
+					 severe = severe - normal,
+           moderate = moderate - normal,
+					 normal = NULL)
 }
 
 getLogOdds <- function(mod){
@@ -103,9 +88,15 @@ mdf <- data.frame(file=mods, stringsAsFactors=F) %>%
 	mutate(outcome = substr(file, 1, 4),
 				 model = "plos",
 				 scale = substr(file, 6, 8),
-         extreme=NA,
-         moderate=NA,
-         severe=NA,
+         extreme.fit=NA,
+         moderate.fit=NA,
+         severe.fit=NA,
+         extreme.min=NA,
+         moderate.min=NA,
+         severe.min=NA,
+         extreme.max=NA,
+         moderate.max=NA,
+         severe.max=NA,
          extreme.pval=NA,
          moderate.pval=NA,
          severe.pval=NA) %>%
@@ -126,11 +117,18 @@ for (i in 1:nrow(mdf)){
    sel <- dat %>% filter(in_lac)
   }
    
-  coef <- getAME(mod, sel, vars='drought_cat')
+  coef <- getAME(mod, sel)
   
-  mdf$extreme[i] <- coef$ame[coef$value == 'extreme']
-  mdf$severe[i] <- coef$ame[coef$value=='severe']
-  mdf$moderate[i] <- coef$ame[coef$value=='moderate']
+  mdf$extreme.fit[i] <- coef[1, 'extreme', drop=T]
+  mdf$severe.fit[i] <- coef[1, 'severe', drop=T]
+  mdf$moderate.fit[i] <- coef[1, 'moderate', drop=T]
+
+  mdf$extreme.max[i] <- coef[2, 'extreme', drop=T]
+  mdf$severe.max[i] <- coef[2, 'severe', drop=T]
+  mdf$moderate.max[i] <- coef[2, 'moderate', drop=T]
+  mdf$extreme.min[i] <- coef[3, 'extreme', drop=T]
+  mdf$severe.min[i] <- coef[3, 'severe', drop=T]
+  mdf$moderate.min[i] <- coef[3, 'moderate', drop=T]
 
 	ps <- getPvals(mod)
   
@@ -139,41 +137,37 @@ for (i in 1:nrow(mdf)){
 	mdf$severe.pval[i] <- ps['drought_catsevere']
 }
 
+bonferroni <- 12
+
 allm <- mdf %>%
-  gather(drought, value, -file, -outcome, -model, -scale) %>%
+  gather(var, value, -file, -outcome, -model, -scale) %>%
+  separate(var, c("drought", "var")) %>%
+  spread(var, value) %>%
   mutate(outcome = factor(outcome,
                           levels=c('cont', 'emot', 'phys', 'sexu'),
                           labels=c('Controlling Behaviors', 
                                    'Emotional Violence', 
                                    'Physical Violence', 
                                    'Sexual Violence')),
-                          #  scale = factor(scale,
-        #                 levels=c('plos', 'cty', 'afr', 'all'),
-        #                 labels=c('previous\n analysis\n(n=83,970)', 
-				# 												 'previous\ncountries\nmore surveys\n(n=123,488)',
-				# 												 'all\nafrican\nsurveys\n(n=194,820)', 
-				# 												 'all\navailable\nsurveys\n(n=380,100)')),
          scale = factor(scale,
                         levels=c('afr', 'asi', 'lac'),
                         labels=c("SSA", "Asia", "LAC")),
-         var = ifelse(grepl('pval', drought), 'pvalue', 'ame'), 
-				 drought = gsub('.pval', '', drought)) %>%
-	spread(var, value) %>%
-  mutate(stars = case_when(pvalue > 0.05 ~ '',
-                           pvalue > 0.01 ~ '*',
-                           pvalue > 0.001 ~ '**',
+         var = ifelse(grepl('pval', drought), 'pvalue', 'ame'),
+         stars = case_when(pval > 0.05/bonferroni ~ '',
+                           pval > 0.01/bonferroni ~ '*',
+                           pval > 0.001/bonferroni ~ '**',
                            TRUE ~ '***'),
          drought = factor(drought, levels=c('moderate', 'severe', 'extreme'),
                           labels=c("Moderate", "Severe", "Extreme")))
 
 res <- ggplot(allm) + 
-  geom_bar(aes(x=drought, y=ame, fill=drought), stat='identity',
+  geom_pointrange(aes(x=drought, y=fit, ymax=max, ymin=min, color=drought),
            show.legend=F) +
-  #geom_errorbar(aes(x=drought, ymin=min, ymax=max)) +
-  geom_text(aes(x=drought, y=ame + 0.002, label=stars)) + 
+  geom_text(aes(x=drought, y=max + 0.002, label=stars)) + 
+  geom_hline(aes(yintercept=0), linetype=3) + 
   facet_grid(outcome ~ scale) + 
-  scale_fill_manual(values=c('#fe9929', '#d95f0e', '#993404')) +
-  scale_y_continuous(limits=c(min(allm$ame), max(allm$ame) + 0.004), sec.axis = ) + 
+  scale_color_manual(values=c('#fe9929', '#d95f0e', '#993404')) +
+  #scale_y_continuous(limits=c(min(allm$min), max(allm$max) + 0.004)) + 
   theme_bw() + 
   labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 

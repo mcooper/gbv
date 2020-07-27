@@ -2,15 +2,17 @@ library(tidyverse)
 library(mgcv)
 library(countrycode)
 library(xtable)
+library(ape)
 
 dat <- read.csv('~/mortalityblob/gbv/GBV_sel.csv')
 
+moran <- data.frame()
 res <- data.frame()
 for (cty in unique(dat$country)){
   print(cty)
   
   sel <- dat %>% 
-    filter(Country == cty) %>%
+    filter(country == cty) %>%
     mutate(in_drought = drought_cat != 'normal')
 
   form <- ' ~ plos_age + woman_literate + is_married + 
@@ -70,6 +72,41 @@ for (cty in unique(dat$country)){
                     phy.p=p$p.pv['in_droughtTRUE']) 
 
   res <- bind_rows(res, tmp)
+
+  #Conduct morans I test
+	#First, summarized
+  midat <- sel %>%
+    select(latitude, longitude, code) %>%
+    mutate(phys=phys$residuals,
+           sexu=sexu$residuals,
+           cont=cont$residuals,
+           emot=emot$residuals) %>%
+    group_by(code) %>%
+    summarize_all(mean)
+  
+  dmat <- as.matrix(dist(midat[ , c('longitude', 'latitude')]))
+	dmat <- 1/dmat
+	diag(dmat) <- 0
+  
+  mi.p <- data.frame(Moran.I(midat$phys, dmat))$p.value
+  mi.s <- data.frame(Moran.I(midat$sexu, dmat))$p.value
+  mi.c <- data.frame(Moran.I(midat$cont, dmat))$p.value
+  mi.e <- data.frame(Moran.I(midat$emot, dmat))$p.value
+
+  moran <- bind_rows(moran, data.frame(country=cty, p=mi.p, s=mi.s, c=mi.c, e=mi.e, level='agg'))
+
+#  #But also, bc I'm curious, at the individual level
+#  dmat <- as.matrix(dist(sel[ , c('longitude', 'latitude')]))
+#	dmat <- 1/dmat
+#	dmat[is.infinite(dmat)] <- 0
+#
+#  mi.p <- data.frame(Moran.I(phys$residuals, dmat))$p.value
+#  mi.s <- data.frame(Moran.I(sexu$residuals, dmat))$p.value
+#  mi.c <- data.frame(Moran.I(cont$residuals, dmat))$p.value
+#  mi.e <- data.frame(Moran.I(emot$residuals, dmat))$p.value
+#
+#  moran <- bind_rows(moran, data.frame(country=cty, p=mi.p, s=mi.s, c=mi.c, e=mi.e, level='raw'))
+
 }
 
 

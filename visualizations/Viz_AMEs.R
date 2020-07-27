@@ -27,20 +27,17 @@ ames <- bind_rows(spatial, aspatial) %>%
           select(-Category),
         all.x=T, all.y=F) %>%
   arrange(Order) %>%
-  mutate(col=paste0(outcome, '.', type)) %>%
-  select(col, cell, Label, region) %>%
-  spread(col, cell)
+  mutate(region=paste0(region, '.', type)) %>%
+  select(outcome, cell, Label, region) %>%
+  spread(region, cell)
 
-#############################
-# Write to Tables
+############################# # Write to Tables
 ##########################
 
-afr1 <- ames %>% filter(region=='afr') %>% select(-region) %>% select(matches('con|emo|Lab'))
-asi1 <- ames %>% filter(region=='asi') %>% select(-region) %>% select(matches('con|emo|Lab'))
-lac1 <- ames %>% filter(region=='lac') %>% select(-region) %>% select(matches('con|emo|Lab'))
-afr2 <- ames %>% filter(region=='afr') %>% select(-region) %>% select(matches('phy|sex|Lab'))
-asi2 <- ames %>% filter(region=='asi') %>% select(-region) %>% select(matches('phy|sex|Lab'))
-lac2 <- ames %>% filter(region=='lac') %>% select(-region) %>% select(matches('phy|sex|Lab'))
+emot <- ames %>% filter(grepl('emot', outcome)) %>% select(-outcome)
+sexu <- ames %>% filter(grepl('sexu', outcome)) %>% select(-outcome)
+phys <- ames %>% filter(grepl('phys', outcome)) %>% select(-outcome)
+cont <- ames %>% filter(grepl('cont', outcome)) %>% select(-outcome)
 
 new_sanitize <- function(str){
   str <- gsub('>', '$>$', str)
@@ -50,93 +47,65 @@ new_sanitize <- function(str){
 
 options(xtable.sanitize.text.function=new_sanitize)
 
-#Africa
-hline1 <- c(-1, 0)
-htype1 <- c("\\toprule&\\multicolumn{2}{c}{Controlling}& \\multicolumn{2}{c}{Emotional}\\\\",
-"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
+#Emotional Violence
+hline <- c(-1, 0)
+htype <- c("\\toprule&\\multicolumn{2}{c}{SSA}&\\multicolumn{2}{c}{Asia}&\\multicolumn{2}{c}{LAC}\\\\",
+"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
 
-print(xtable(afr1,
-             caption='Average marginal effects for individual and household-level variables in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models in Africa for controlling behaviors and emotional violence.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
-             label='tab:ames_afr1',
-             align=c('r', "r", "|", "p{2cm}", "p{2cm}", "p{2cm}", "p{2cm}")), 
-      file='~/ipv-rep-tex/tables/afr_res1.tex',
+print(xtable(emot,
+             caption='Average marginal effects of individual and household-level variables on emotional violence in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
+             label='tab:ames_emot',
+             align=c('r', "r", "|", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}")), 
+      file='~/ipv-rep-tex/tables/ames_emot.tex',
       include.rownames=F,
       include.colnames=F,
-      add.to.row = list(pos = as.list(hline1),
-                        command = htype1))
+      add.to.row = list(pos = as.list(hline),
+                        command = htype))
 
-hline2 <- c(-1, 0)
-htype2 <- c("\\toprule&\\multicolumn{2}{c}{Physical}& \\multicolumn{2}{c}{Sexual}\\\\",
-" & \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
 
-print(xtable(afr2,
-             caption='Average marginal effects for individual and household-level variables in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models in Africa for physical and sexual violence.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
-             label='tab:ames_afr2',
-             align=c('r', "r", "|", "p{2cm}", "p{2cm}", "p{2cm}", "p{2cm}")), 
-      file='~/ipv-rep-tex/tables/afr_res2.tex',
+#Sexual Violence
+hline <- c(-1, 0)
+htype <- c("\\toprule&\\multicolumn{2}{c}{SSA}&\\multicolumn{2}{c}{Asia}&\\multicolumn{2}{c}{LAC}\\\\",
+"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
+
+print(xtable(sexu,
+             caption='Average marginal effects of individual and household-level variables on sexual violence in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
+             label='tab:ames_emot',
+             align=c('r', "r", "|", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}")), 
+      file='~/ipv-rep-tex/tables/ames_sexu.tex',
       include.rownames=F,
       include.colnames=F,
-      add.to.row = list(pos = as.list(hline2),
-                        command = htype2))
+      add.to.row = list(pos = as.list(hline),
+                        command = htype))
 
 
-#Asia
-hline1 <- c(-1, 0)
-htype1 <- c("\\toprule&\\multicolumn{2}{c}{Controlling}& \\multicolumn{2}{c}{Emotional}\\\\",
-"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
+#Physical Violence
+hline <- c(-1, 0)
+htype <- c("\\toprule&\\multicolumn{2}{c}{SSA}&\\multicolumn{2}{c}{Asia}&\\multicolumn{2}{c}{LAC}\\\\",
+"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
 
-print(xtable(asi1,
-             caption='Average marginal effects for individual and household-level variables in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models in Asia for controlling behaviors and emotional violence.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
-             label='tab:ames_asi1',
-             align=c('r', "r", "|", "p{2cm}", "p{2cm}", "p{2cm}", "p{2cm}")), 
-      file='~/ipv-rep-tex/tables/asi_res1.tex',
+print(xtable(phys,
+             caption='Average marginal effects of individual and household-level variables on physical violence in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
+             label='tab:ames_phys',
+             align=c('r', "r", "|", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}")), 
+      file='~/ipv-rep-tex/tables/ames_phys.tex',
       include.rownames=F,
       include.colnames=F,
-      add.to.row = list(pos = as.list(hline1),
-                        command = htype1))
+      add.to.row = list(pos = as.list(hline),
+                        command = htype))
 
-hline2 <- c(-1, 0)
-htype2 <- c("\\toprule&\\multicolumn{2}{c}{Physical}& \\multicolumn{2}{c}{Sexual}\\\\",
-" & \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
 
-print(xtable(asi2,
-             caption='Average marginal effects for individual and household-level variables in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models in Asia for physical and sexual violence.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
-             label='tab:ames_asi2',
-             align=c('r', "r", "|", "p{2cm}", "p{2cm}", "p{2cm}", "p{2cm}")), 
-      file='~/ipv-rep-tex/tables/asi_res2.tex',
+#Controlling Violence
+hline <- c(-1, 0)
+htype <- c("\\toprule&\\multicolumn{2}{c}{SSA}&\\multicolumn{2}{c}{Asia}&\\multicolumn{2}{c}{LAC}\\\\",
+"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
+
+print(xtable(cont,
+             caption='Average marginal effects of individual and household-level variables on controlling behaviors in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
+             label='tab:ames_cont',
+             align=c('r', "r", "|", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}")), 
+      file='~/ipv-rep-tex/tables/ames_cont.tex',
       include.rownames=F,
       include.colnames=F,
-      add.to.row = list(pos = as.list(hline2),
-                        command = htype2))
-
-
-#Latin America and the Caribbean
-hline1 <- c(-1, 0)
-htype1 <- c("\\toprule&\\multicolumn{2}{c}{Controlling}& \\multicolumn{2}{c}{Emotional}\\\\",
-"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
-
-print(xtable(lac1,
-             caption='Average marginal effects for individual and household-level variables in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models in Latin America and the Caribbean for controlling behaviors and emotional violence.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
-             label='tab:ames_lac1',
-             align=c('r', "r", "|", "p{2cm}", "p{2cm}", "p{2cm}", "p{2cm}")), 
-      file='~/ipv-rep-tex/tables/lac_res1.tex',
-      include.rownames=F,
-      include.colnames=F,
-      add.to.row = list(pos = as.list(hline1),
-                        command = htype1))
-
-hline2 <- c(-1, 0)
-htype2 <- c("\\toprule&\\multicolumn{2}{c}{Physical}& \\multicolumn{2}{c}{Sexual}\\\\",
-" & \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
-
-print(xtable(lac2,
-             caption='Average marginal effects for individual and household-level variables in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models in Latin America and the Caribbean for physical and sexual violence.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
-             label='tab:ames_lac2',
-             align=c('r', "r", "|", "p{2cm}", "p{2cm}", "p{2cm}", "p{2cm}")), 
-      file='~/ipv-rep-tex/tables/lac_res2.tex',
-      include.rownames=F,
-      include.colnames=F,
-      add.to.row = list(pos = as.list(hline2),
-                        command = htype2))
-
-
+      add.to.row = list(pos = as.list(hline),
+                        command = htype))

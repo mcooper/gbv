@@ -21,19 +21,18 @@ getAME <- function(mod, df){
 								  df %>% mutate(drought_cat='normal'),
 								  df %>% mutate(drought_cat='moderate'))
 	  
-	pred <- predict(mod, df, #se.fit=TRUE, 
+	pred <- predict(mod, df, se.fit=TRUE, 
                   type='response')
 	  
-  df$fit <- pred#$fit
-	#df$min <- pred$fit + pred$se.fit*qnorm(0.025, 0, 1)
-	#df$max <- pred$fit + pred$se.fit*qnorm(0.975, 0, 1)
+  df$fit <- pred$fit
+	df$min <- pred$fit + pred$se.fit*qnorm(0.025, 0, 1)
+	df$max <- pred$fit + pred$se.fit*qnorm(0.975, 0, 1)
 			  
 	df %>%
 		group_by(drought_cat) %>%
 		summarize(fit=mean(fit),
-							#min=mean(min),
-							#max=mean(max)
-              ) %>%
+							min=mean(min),
+							max=mean(max)) %>%
 		gather(var, val, -drought_cat) %>%
 		spread(drought_cat, val) %>%
 		mutate(extreme = extreme - normal,
@@ -81,9 +80,15 @@ mdf <- read.csv('~/mortalityblob/gbv/moran_results.csv',
          scale=='code') %>%
   group_by(outcome, region) %>%
   filter(p.value==max(p.value)) %>%
-  mutate(extreme=NA,
-         moderate=NA,
-         severe=NA,
+  mutate(extreme.fit=NA,
+         moderate.fit=NA,
+         severe.fit=NA,
+         extreme.max=NA,
+         moderate.max=NA,
+         severe.max=NA,
+         extreme.min=NA,
+         moderate.min=NA,
+         severe.min=NA,
          extreme.pval=NA,
          moderate.pval=NA,
          severe.pval=NA)
@@ -105,53 +110,62 @@ for (i in 1:nrow(mdf)){
    
   coef <- getAME(mod, sel)
   
-  mdf$extreme[i] <- coef[1, 'extreme']
-  mdf$severe[i] <- coef[1, 'severe']
-  mdf$moderate[i] <- coef[1, 'moderate']
+  mdf$extreme.fit[i] <- coef[1, 'extreme', drop=T]
+  mdf$severe.fit[i] <- coef[1, 'severe', drop=T]
+  mdf$moderate.fit[i] <- coef[1, 'moderate', drop=T]
 
-	ps <- getPvals(mod)
+  mdf$extreme.max[i] <- coef[2, 'extreme', drop=T]
+  mdf$severe.max[i] <- coef[2, 'severe', drop=T]
+  mdf$moderate.max[i] <- coef[2, 'moderate', drop=T]
+  mdf$extreme.min[i] <- coef[3, 'extreme', drop=T]
+  mdf$severe.min[i] <- coef[3, 'severe', drop=T]
+  mdf$moderate.min[i] <- coef[3, 'moderate', drop=T]
+	
+  ps <- getPvals(mod)
   
   mdf$moderate.pval[i] <- ps['drought_catmoderate']
 	mdf$extreme.pval[i] <- ps['drought_catextreme']
 	mdf$severe.pval[i] <- ps['drought_catsevere']
   
 }
-mdf$extreme <- unlist(mdf$extreme)
-mdf$severe <- unlist(mdf$severe)
-mdf$moderate <- unlist(mdf$moderate)
+
+system('~/telegram.sh "Done"')
 
 write.csv(mdf, '~/mortalityblob/gbv/gams_results.csv', row.names=F)
 
-allm <- mdf %>%
-	select(-order, -method, -observed, -expected, -sd, -p.value, -scale) %>%
-  gather(drought, value, -file, -outcome, -model, -region) %>%
+bonferroni <- 12
+
+allm <- mdf %>% 
+  select(-file, -order, -method, -scale, -model,
+         -observed, -expected, -sd, -p.value) %>%
+  gather(var, value, -outcome, -region) %>%
+  separate(var, c("drought", "var")) %>%
+  spread(var, value) %>%
   mutate(outcome = factor(outcome,
                           levels=c('cont', 'emot', 'phys', 'sexu'),
                           labels=c('Controlling Behaviors', 
-                                          'Emotional Violence', 
-                                          'Physical Violence', 
-                                          'Sexual Violence')),
-         region = factor(region,
+                                   'Emotional Violence', 
+                                   'Physical Violence', 
+                                   'Sexual Violence')),
+         scale = factor(region,
                         levels=c('afr', 'asi', 'lac'),
                         labels=c("SSA", "Asia", "LAC")),
-         var = ifelse(grepl('pval', drought), 'Pvalue', 'AME'), 
-				 drought = gsub('.pval', '', drought)) %>%
-	spread(var, value) %>%
-  mutate(stars = case_when(Pvalue > 0.05 ~ '',
-                           Pvalue > 0.01 ~ '*',
-                           Pvalue > 0.001 ~ '**',
+         var = ifelse(grepl('pval', drought), 'pvalue', 'ame'),
+         stars = case_when(pval > 0.05/bonferroni ~ '',
+                           pval > 0.01/bonferroni ~ '*',
+                           pval > 0.001/bonferroni ~ '**',
                            TRUE ~ '***'),
          drought = factor(drought, levels=c('moderate', 'severe', 'extreme'),
                           labels=c("Moderate", "Severe", "Extreme")))
 
 res <- ggplot(allm) + 
-  geom_bar(aes(x=drought, y=AME, fill=drought), stat='identity',
+  geom_pointrange(aes(x=drought, y=fit, ymax=max, ymin=min, color=drought),
            show.legend=F) +
-  #geom_errorbar(aes(x=drought, ymin=min, ymax=max)) +
-  geom_text(aes(x=drought, y=AME + 0.002, label=stars)) + 
-  facet_grid(outcome ~ region) + 
-  scale_fill_manual(values=c('#fe9929', '#d95f0e', '#993404')) +
-  scale_y_continuous(limits=c(min(allm$AME), max(allm$AME) + 0.004), sec.axis = ) + 
+  geom_text(aes(x=drought, y=max + 0.002, label=stars)) + 
+  geom_hline(aes(yintercept=0), linetype=3) + 
+  facet_grid(outcome ~ scale) + 
+  scale_color_manual(values=c('#fe9929', '#d95f0e', '#993404')) +
+  #scale_y_continuous(limits=c(min(allm$min), max(allm$max) + 0.004)) + 
   theme_bw() + 
   labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 
