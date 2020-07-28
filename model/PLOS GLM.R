@@ -13,8 +13,8 @@ runModel <- function(savename, data){
 	if (grepl('lac', savename)){
 		data <- data %>% filter(in_lac)
 	}
-	if (grepl('cty', savename)){
-		data <- data %>% filter(in_cty)
+	if (grepl('asi', savename)){
+		data <- data %>% filter(in_asia)
 	}
 	if (grepl('afr', savename)){
 		data <- data %>% filter(in_afr)
@@ -26,7 +26,7 @@ runModel <- function(savename, data){
                 ' ~ plos_age + woman_literate + is_married + 
                                     plos_births + plos_hhsize + 
                                     plos_rural + husband_education_level + 
-                                    plos_husband_age + drought_cat')
+                                    plos_husband_age + drought_cat + survey_code')
  
   mod <- gam(as.formula(form), 
                  data=data, 

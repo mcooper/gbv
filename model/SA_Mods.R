@@ -111,23 +111,23 @@ dat$survey_code <- as.character(dat$survey_code)
 # Run global models
 ###############################################################
 
-mods <- c('phys_afr', 
-					'sexu_afr', 
-          'emot_afr', 
-					'cont_afr',
-          'phys_lac', 
-					'sexu_lac', 
-          'emot_lac', 
-					'cont_lac',
-					'phys_asi', 
-					'sexu_asi', 
-          'emot_asi', 
+mods <- c(#'phys_afr', 
+					#'sexu_afr', 
+          #'emot_afr', 
+					#'cont_afr',
+          #'phys_lac', 
+					#'sexu_lac', 
+          #'emot_lac', 
+					#'cont_lac',
+					#'phys_asi', 
+					#'sexu_asi', 
+          #'emot_asi', 
 					'cont_asi'
           )
 
 
 for(mod in mods){
-	runModel(mod, dat)
+	runModel(mod, dat, knots=c(1250, 1500, 1750, 2000))
 }
 
 system('~/telegram.sh "Models Done~"')

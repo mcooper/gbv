@@ -2,6 +2,7 @@ library(xtable)
 library(tidyverse)
 
 dat <- read.csv('~/mortalityblob/gbv/moran_results.csv') %>%
+  filter(method != 'epstein') %>%
   mutate(observed = round(observed, 3),
          stars = case_when(p.value > 0.1 ~ '',
                            p.value > 0.05 ~ '.',
@@ -12,12 +13,11 @@ dat <- read.csv('~/mortalityblob/gbv/moran_results.csv') %>%
   select(-file, -model, -method, -observed, -sd, -p.value, -expected, -stars) %>%
   unique %>%
   spread(order, val) %>%
-  arrange(scale, region, outcome)
+  arrange(region, outcome)
 
 n <- dat  %>%
-  filter(scale == 'code') %>%
   mutate(model = paste0(outcome, region)) %>%
-  select(-outcome, -region, -scale) %>%
+  select(-outcome, -region) %>%
   gather(order, moran, -model) %>%
   mutate(moran = moran,
          order = as.numeric(order)) %>%

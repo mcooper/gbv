@@ -51,7 +51,7 @@ dat <- dat %>% st_drop_geometry()
 # Now run moran's I tests  
 #############################
 
-for (i in 1:nrow(mdf)){
+for (i in which(mdf$method == 'epstein')){
   cat('calculating Morans I for', mdf$model[i], '\n')
   mod <- readRDS(mdf$file[i])
   
