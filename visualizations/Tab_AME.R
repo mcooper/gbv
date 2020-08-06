@@ -1,24 +1,44 @@
 library(tidyverse)
 library(xtable)
 
-spatial <- read.csv('~/mortalityblob/gbv/AMEs.csv') %>%
-  mutate(type='spatial')
+spatial <- read.csv('~/mortalityblob/gbv/AMEs.csv')
+aspatial <- read.csv('~/mortalityblob/gbv/PLOS_AMEs.csv')
 
-aspatial <- read.csv('~/mortalityblob/gbv/PLOS_AMEs.csv') %>%
-  mutate(type='aspatial')
+aics <- bind_rows(spatial, aspatial) %>%
+  select(model) %>%
+  unique %>%
+  mutate(var = 'AIC', value='')
 
-ames <- bind_rows(spatial, aspatial) %>%
+for (m in aics$model){
+  print(m)
+  
+  if (grepl('0', m)){
+    mod <- readRDS(file=paste0('~/mortalityblob/gbv_gams/gam_splines/', m))
+  }
+  if (grepl('PLOS', m)){
+    mod <- readRDS(file=paste0('~/mortalityblob/gbv_gams/epstein/', m))
+  }
+  
+  aics$ame[aics$model == m] <- AIC(mod)
+
+}
+
+ames <- bind_rows(spatial, aspatial, aics) %>%
   mutate(Var = gsub('TRUE', '', paste0(var, value)),
+         type= case_when(grepl('PLOS', model) ~ 'aspatial',
+                         TRUE ~ 'spatial'),
          ame = round(ame, 3),
          ame.se = round(ame.se, 3),
-         stars = case_when(p.value > 0.1 ~ '',
+         stars = case_when(is.na(p.value) ~ '',
+                           p.value > 0.1 ~ '',
                            p.value > 0.05 ~ '.',
                            p.value > 0.01 ~ '*',
                            p.value > 0.001 ~ '**',
                            TRUE ~ '***'),
         outcome = substr(model, 1, 4),
         region = substr(model, 6, 8),
-        cell = paste0(ame, stars, '\\newline(', ame.se, ')')) %>% 
+        cell = paste0(ame, stars, ifelse(is.na(ame.se), '', 
+                                         paste0('\\newline(', ame.se, ')')))) %>% 
   merge(read.csv('~/gbv/visualizations/labels.csv', stringsAsFactors=F) %>%
           mutate(Category = ifelse(Category == '', NA, Category)) %>%
           fill(Category) %>%
@@ -26,10 +46,11 @@ ames <- bind_rows(spatial, aspatial) %>%
                  Label = paste0(Category, Label)) %>%
           select(-Category),
         all.x=T, all.y=F) %>%
-  arrange(Order) %>%
   mutate(region=paste0(region, '.', type)) %>%
-  select(outcome, cell, Label, region) %>%
-  spread(region, cell)
+  select(outcome, cell, Label, region, Order) %>%
+  spread(region, cell) %>%
+  arrange(Order) %>%
+  select(-Order)
 
 ############################# # Write to Tables
 ##########################

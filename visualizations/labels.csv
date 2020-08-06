@@ -30,3 +30,4 @@ Order,Category,Label,Var
 28,,> 5,"plos_hhsize(5,48]"
 29,Household is Rural,,plos_rural
 30,Total,,Total
+31,AIC,,AIC
