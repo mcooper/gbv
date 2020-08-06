@@ -11,7 +11,7 @@ logit2prob <- function(logit){
   return(prob)
 }
 
-getAME <- function(mod, df, vars=c('plos_age', 'woman_literate', 'is_married', 
+getAME <- function(mod, df, vars=c('drought_cat', 'plos_age', 'woman_literate', 'is_married', 
                                    'plos_births', 'plos_hhsize', 'plos_rural', 
                                    'husband_education_level', 'plos_husband_age')){
 	  
@@ -79,9 +79,9 @@ dat <- read.csv('~/mortalityblob/gbv/GBV_sel.csv') %>%
 mdf <- read.csv('~/mortalityblob/gbv/moran_results.csv',
                 stringsAsFactors=F) %>%
   filter(method=='gam_splines',
-         scale=='code') %>%
+         p.value > 0.05) %>%
   group_by(outcome, region) %>%
-  filter(p.value==max(p.value))
+  filter(order==min(order))
 
 final <- data.frame()
 for (i in 1:nrow(mdf)){

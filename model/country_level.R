@@ -2,11 +2,31 @@ library(tidyverse)
 library(mgcv)
 library(countrycode)
 library(xtable)
-library(ape)
+library(moranfast)
 
 dat <- read.csv('~/mortalityblob/gbv/GBV_sel.csv')
 
-moran <- data.frame()
+runTillNoSA <- function(form, data){
+  moranp <- 0
+  ks = c(50, 100, 500, 1000, 1500)
+  i <- 1
+  try({ 
+    while (moranp < 0.05){
+      cat('Running with', ks[i], 'knots\n')
+      mod <- gam(as.formula(paste0(form, 
+                                   ' + s(longitude, latitude, bs="sos", k=', ks[i], ')')),
+                 data=data,
+                 family=binomial(link = 'logit'))
+
+      moranp <- moranfast(mod$residuals, data$longitude, data$latitude)$p.value
+
+      i <- i + 1
+    }  
+  })
+
+  return(mod)
+}
+
 res <- data.frame()
 for (cty in unique(dat$country)){
   print(cty)
@@ -18,25 +38,23 @@ for (cty in unique(dat$country)){
   form <- ' ~ plos_age + woman_literate + is_married + 
                   plos_births + plos_hhsize + 
                   plos_rural + husband_education_level + 
-                  plos_husband_age + in_drought + 
-                  s(latitude, longitude, bs="sos")'
+                  plos_husband_age + in_drought'
   
   if (length(unique(sel$survey_code)) > 1){
     form <- paste0(form, ' + survey_code')
   }
-
-  phys <- gam(as.formula(paste0("viol_phys", form)),
-              data=sel,
-              family=binomial(link = 'logit')) 
-  sexu <- gam(as.formula(paste0("viol_sexu", form)), 
-              data=sel,
-              family=binomial(link = 'logit')) 
-  cont <- gam(as.formula(paste0("viol_cont", form)), 
-              data=sel,
-              family=binomial(link = 'logit')) 
-  emot <- gam(as.formula(paste0("viol_emot", form)), 
-              data=sel,
-              family=binomial(link = 'logit')) 
+  print('phys')
+  phys <- runTillNoSA(paste0("viol_phys", form),
+              data=sel) 
+  print('sexu')
+  sexu <- runTillNoSA(paste0("viol_sexu", form), 
+              data=sel)
+  print('cont')
+  cont <- runTillNoSA(paste0("viol_cont", form), 
+              data=sel)
+  print('emot')
+  emot <- runTillNoSA(paste0("viol_emot", form), 
+              data=sel)
   
   p <- summary(phys)
   s <- summary(sexu)
@@ -72,43 +90,10 @@ for (cty in unique(dat$country)){
                     phy.p=p$p.pv['in_droughtTRUE']) 
 
   res <- bind_rows(res, tmp)
-
-  #Conduct morans I test
-	#First, summarized
-  midat <- sel %>%
-    select(latitude, longitude, code) %>%
-    mutate(phys=phys$residuals,
-           sexu=sexu$residuals,
-           cont=cont$residuals,
-           emot=emot$residuals) %>%
-    group_by(code) %>%
-    summarize_all(mean)
   
-  dmat <- as.matrix(dist(midat[ , c('longitude', 'latitude')]))
-	dmat <- 1/dmat
-	diag(dmat) <- 0
-  
-  mi.p <- data.frame(Moran.I(midat$phys, dmat))$p.value
-  mi.s <- data.frame(Moran.I(midat$sexu, dmat))$p.value
-  mi.c <- data.frame(Moran.I(midat$cont, dmat))$p.value
-  mi.e <- data.frame(Moran.I(midat$emot, dmat))$p.value
-
-  moran <- bind_rows(moran, data.frame(country=cty, p=mi.p, s=mi.s, c=mi.c, e=mi.e, level='agg'))
-
-#  #But also, bc I'm curious, at the individual level
-#  dmat <- as.matrix(dist(sel[ , c('longitude', 'latitude')]))
-#	dmat <- 1/dmat
-#	dmat[is.infinite(dmat)] <- 0
-#
-#  mi.p <- data.frame(Moran.I(phys$residuals, dmat))$p.value
-#  mi.s <- data.frame(Moran.I(sexu$residuals, dmat))$p.value
-#  mi.c <- data.frame(Moran.I(cont$residuals, dmat))$p.value
-#  mi.e <- data.frame(Moran.I(emot$residuals, dmat))$p.value
-#
-#  moran <- bind_rows(moran, data.frame(country=cty, p=mi.p, s=mi.s, c=mi.c, e=mi.e, level='raw'))
-
 }
 
+write.csv(res, '~/mortalityblob/gbv/county_results.csv', row.names=F)
 
 res <- res[!is.nan(res$phy.p), ]
 rownames(res) <- 1:nrow(res)
@@ -117,7 +102,7 @@ res$Country <- countrycode(res$Country, 'dhs', 'country.name')
 bonferroni <- function(a, m){
   a/m
 }
-m <- 39
+m <- 39*4
 
 t <- res %>%
   gather(var, val, -Country) %>%
@@ -143,3 +128,5 @@ print(xtable(t,
       file='~/ipv-rep-tex/tables/country.tex',
       include.rownames=F,
       table.placement='H')
+
+

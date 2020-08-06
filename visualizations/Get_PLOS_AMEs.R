@@ -1,4 +1,3 @@
-
 library(tidyverse)
 library(mgcv)
 
@@ -12,7 +11,7 @@ logit2prob <- function(logit){
   return(prob)
 }
 
-getAME <- function(mod, df, vars=c('plos_age', 'woman_literate', 'is_married', 
+getAME <- function(mod, df, vars=c('drought_cat', 'plos_age', 'woman_literate', 'is_married', 
                                    'plos_births', 'plos_hhsize', 'plos_rural', 
                                    'husband_education_level', 'plos_husband_age')){
 	  
