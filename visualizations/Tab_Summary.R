@@ -127,8 +127,7 @@ print(xtable(summaryl,
       hline.after = NULL,
       add.to.row = list(pos = as.list(hline),
                         command = htype),
-      file='~/ipv-rep-tex/tables/variable_summary.tex',
-      floating.environment='H')
+      file='~/ipv-rep-tex/tables/variable_summary.tex')
 
 ########################################
 # Summary of Observations by Country and Year
@@ -144,8 +143,8 @@ print(xtable(t,
              label='tab:cty_year',
              digits=0),
       file='~/ipv-rep-tex/tables/country_year.tex', 
-      #size="\\fontsize{8pt}{8pt}\\selectfont", 
-      floating.environment = "sidewaystable")
+      floating.environment = "sidewaystable",
+      scalebox=0.95)
 
 
 

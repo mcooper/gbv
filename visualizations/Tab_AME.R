@@ -68,65 +68,59 @@ new_sanitize <- function(str){
 
 options(xtable.sanitize.text.function=new_sanitize)
 
-#Emotional Violence
 hline <- c(-1, 0)
 htype <- c("\\toprule&\\multicolumn{2}{c}{SSA}&\\multicolumn{2}{c}{Asia}&\\multicolumn{2}{c}{LAC}\\\\",
 "  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
 
+#Emotional Violence
 print(xtable(emot,
-             caption='Average marginal effects of individual and household-level variables on emotional violence in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
+             caption='Average marginal effects of covariates on emotional violence in models with (\\textit{sp.}) and without (\\textit{asp.}) spatial terms across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
              label='tab:ames_emot',
              align=c('r', "r", "|", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}")), 
       file='~/ipv-rep-tex/tables/ames_emot.tex',
       include.rownames=F,
       include.colnames=F,
       add.to.row = list(pos = as.list(hline),
-                        command = htype))
+                        command = htype),
+      scalebox=0.85)
 
 
 #Sexual Violence
-hline <- c(-1, 0)
-htype <- c("\\toprule&\\multicolumn{2}{c}{SSA}&\\multicolumn{2}{c}{Asia}&\\multicolumn{2}{c}{LAC}\\\\",
-"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
-
 print(xtable(sexu,
-             caption='Average marginal effects of individual and household-level variables on sexual violence in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
+             caption='Average marginal effects of covariates on sexual violence in models with (\\textit{sp.}) and without (\\textit{asp.}) spatial terms across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
              label='tab:ames_emot',
              align=c('r', "r", "|", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}")), 
       file='~/ipv-rep-tex/tables/ames_sexu.tex',
       include.rownames=F,
       include.colnames=F,
       add.to.row = list(pos = as.list(hline),
-                        command = htype))
+                        command = htype),
+      scalebox=0.85)
 
 
 #Physical Violence
-hline <- c(-1, 0)
-htype <- c("\\toprule&\\multicolumn{2}{c}{SSA}&\\multicolumn{2}{c}{Asia}&\\multicolumn{2}{c}{LAC}\\\\",
-"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
-
 print(xtable(phys,
-             caption='Average marginal effects of individual and household-level variables on physical violence in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
+             caption='Average marginal effects of covariates on physical violence in models with (\\textit{sp.}) and without (\\textit{asp.}) spatial terms across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
              label='tab:ames_phys',
              align=c('r', "r", "|", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}")), 
       file='~/ipv-rep-tex/tables/ames_phys.tex',
       include.rownames=F,
       include.colnames=F,
       add.to.row = list(pos = as.list(hline),
-                        command = htype))
+                        command = htype),
+      scalebox=0.85)
 
 
 #Controlling Violence
-hline <- c(-1, 0)
-htype <- c("\\toprule&\\multicolumn{2}{c}{SSA}&\\multicolumn{2}{c}{Asia}&\\multicolumn{2}{c}{LAC}\\\\",
-"  &  \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}& \\textit{asp.} & \\textit{sp.}\\\\")
-
 print(xtable(cont,
-             caption='Average marginal effects of individual and household-level variables on controlling behaviors in spatial (\\textit{sp.}) and aspatial (\\textit{asp.}) models across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
+             caption='Average marginal effects of covariates on controlling behaviors in models with (\\textit{sp.}) and without (\\textit{asp.}) spatial terms across all three continents.  (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)', 
              label='tab:ames_cont',
              align=c('r', "r", "|", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}", "p{1.5cm}")), 
       file='~/ipv-rep-tex/tables/ames_cont.tex',
       include.rownames=F,
       include.colnames=F,
+      floating=TRUE,
+      type='latex',
       add.to.row = list(pos = as.list(hline),
-                        command = htype))
+                        command = htype),
+      scalebox=0.85)
