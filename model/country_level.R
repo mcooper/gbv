@@ -1,8 +1,8 @@
 library(tidyverse)
 library(mgcv)
-library(countrycode)
-library(xtable)
 library(moranfast)
+library(foreach)
+library(doParallel)
 
 dat <- read.csv('~/mortalityblob/gbv/GBV_sel.csv')
 
@@ -27,8 +27,10 @@ runTillNoSA <- function(form, data){
   return(mod)
 }
 
-res <- data.frame()
-for (cty in unique(dat$country)){
+cl <- makeCluster(8, outfile='')
+registerDoParallel(cl)
+
+res <- foreach(cty=unique(dat$country), .packages=c('moranfast', 'mgcv', 'tidyverse'), .combine=bind_rows) %dopar% {
   print(cty)
   
   sel <- dat %>% 
@@ -89,8 +91,8 @@ for (cty in unique(dat$country)){
                     phy.c=ame$p,
                     phy.p=p$p.pv['in_droughtTRUE']) 
 
-  res <- bind_rows(res, tmp)
-  
+  tmp
+
 }
 
 write.csv(res, '~/mortalityblob/gbv/county_results.csv', row.names=F)
