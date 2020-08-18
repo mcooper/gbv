@@ -1,9 +1,10 @@
-library(tidyvers)
+library(tidyverse)
 library(xtable)
+library(countrycode)
 
 res <- read.csv('~/mortalityblob/gbv/country_results.csv')
 
-res <- res[!is.nan(res$phy.p), ]
+res <- res[!is.na(res$phy.p), ]
 rownames(res) <- 1:nrow(res)
 res$Country <- countrycode(res$Country, 'dhs', 'country.name')
 
@@ -31,7 +32,7 @@ t <- res %>%
 
 
 print(xtable(t,
-             caption='Country-level results for the Average Marginal Effect (AME) of drought on a woman\'s probability of experiencing IPV. (*$p < 0.05$, **$p < 0.01$, ***$p<0.001$)',
+             caption='Country-level results for the Average Marginal Effect (AME) of drought on a woman\'s probability of experiencing IPV. Significance values are Bonferroni-corrected for testing 156 hypothesis, so *$p < 0.05/156$, **$p < 0.01/156$, ***$p<0.001/156$)',
              label='tab:country'),
       file='~/ipv-rep-tex/tables/country.tex',
       include.rownames=F,

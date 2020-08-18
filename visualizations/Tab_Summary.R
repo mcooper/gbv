@@ -2,7 +2,6 @@ library(tidyverse)
 library(xtable)
 library(lubridate)
 library(countrycode)
-library(recipes)
 
 dat <- read.csv('~/mortalityblob/gbv/GBV_sel.csv')
 
@@ -124,6 +123,7 @@ print(xtable(summaryl,
              label='tab:var_sum'),
       include.rownames=FALSE,
       include.colnames=FALSE,
+      table.placement="H",
       hline.after = NULL,
       add.to.row = list(pos = as.list(hline),
                         command = htype),
