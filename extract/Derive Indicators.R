@@ -7,8 +7,17 @@ setwd(data_dir)
 
 library(tidyverse)
 
+#Data from initial analysis
 w <- read.csv('GBV_women_raw.csv') %>%
   filter(v502_int == 1) 
+
+#New data, with extra vars
+w2 <- read.csv('GBV_women_raw2.csv') %>%
+  filter(v502_int == 1) 
+
+#Subset new data to only households in old data
+w <- w2 %>%
+  filter(hh_code %in% w$hh_code)
 
 
 #######################
@@ -170,6 +179,48 @@ w$husband_age <- w$v730_int
 ############################
 w$woman_employed <- w$v731_chr %in% c(1, 2, 3)
 
+############################
+# Water sources
+############################
+w$water_source_drinking <- case_when(w$v113_int >= 10 & w$v113_int < 20 ~ 'Piped Water',
+                                     w$v113_int >= 20 & w$v113_int < 30 ~ 'Tube Well Water',
+                                     w$v113_int >= 30 & w$v113_int < 40 ~ 'Dug Well Water',
+                                     w$v113_int >= 40 & w$v113_int < 50 ~ 'Surface Water',
+                                     w$v113_int >= 50 & w$v113_int < 60 ~ 'Rain Water',
+                                     w$v113_int >= 60 & w$v113_int < 75 ~ 'Purchased Water',
+                                     w$v113_int == 96 ~ 'Other',
+                                     w$v113_int >= 97 ~ NA_character_)
+
+
+############################
+# Distance to water sources
+############################
+w$v115_int[w$v115_chr %in% c('not dejure resident', 'not a dejure resident', 'not a de jure resident', "don't know ***", "don't know", "dk")] <- NA
+w$v115_int[w$v115_chr %in% c('delivered water', 'on premises')] <- 0
+w$v115_int[w$v115_chr == 'more than 12 hours'] <- 12*60
+w$v115_int[w$v115_chr %in% c(998, 999)] <- NA
+
+
+w$distance_to_water <- w$v115_int
+
+###############################
+# Urban or Rural
+##############################
+
+#############################
+# Womon's Employer
+#############################
+w$v719_chr[w$v719_chr == '9'] <- NA
+w$employer <- w$v719_chr
+
+#############################
+# Woman's Employment
+###########################
+w$employment <- case_when(w$v717_int %in% c(0, 96, 97)  ~ 'Unemployed',
+                          w$v717_int %in% c(1, 2, 3, 10) ~ 'Professional',
+                          w$v717_int %in% c(4, 5) ~ 'Agriculture',
+                          w$v717_int %in% c(6, 7, 8) ~ 'Manual Labor')
+
 ##################################
 #Get rates by DHS site & combine
 #################################
@@ -189,7 +240,9 @@ women <- w %>%
          woman_works_category, husband_works_category, 
          woman_contraception, woman_circumcised, woman_age, 
          woman_literate, number_births, urban_rural, 
-         husband_age, woman_employed) %>%
+         husband_age, woman_employed,
+         employer, employment, distance_to_water, 
+         water_source_drinking) %>%
   mutate(country=substr(code, 1, 2),
          year=1900 + floor((date_cmc - 1)/12))
 

@@ -19,13 +19,15 @@ files <- read.csv('scope/scoped_vars.csv', stringsAsFactors = F) %>%
   filter(!is.na(ge) & !is.na(v044) & !is.na(d105a)) %>%
   arrange(cc, num, subversion) %>%
   filter(!duplicated(paste0(cc, num, subversion), fromLast=T)) %>% #Important: remove old versions of same survey!!
-  select(num, cc, subversion, ir, ge)
+  select(num, cc, subversion, ir, ge) %>%
+  mutate(fname = paste0(cc, '-', subversion, '-', num, '.csv')) %>%
+  filter(!fname %in% list.files('~/mortalityblob/gbv/individual_surveys/'))
 
 ir_vars <- gbv_vars$label[gbv_vars$file=='IR']
 
 setwd(data_dir)
 
-cl <- makeCluster(16, outfile = '')
+cl <- makeCluster(detectCores(), outfile = '')
 registerDoParallel(cl)
 
 foreach(i=1:nrow(files), .packages=c('haven', 'tidyverse', 'foreign')) %dopar% {
@@ -79,7 +81,7 @@ foreach(i=1:nrow(files), .packages=c('haven', 'tidyverse', 'foreign')) %dopar% {
   ir_dat_sel <- ir_dat_sel %>%
     filter(v044_int == 1)
   
-  fname <- paste0('../gbv/individual_surveys/', files$cc[i], '-', files$subversion[i], '-', files$num[i], '.csv')
+  fname <- paste0('../gbv/individual_surveys/', files$fname[i])
   write.csv(ir_dat_sel, fname, row.names=F)
 }
 
@@ -96,7 +98,7 @@ women <- women %>%
 
 setwd('../gbv/')
 
-write.csv(women, 'GBV_women_raw.csv', row.names=F)
+write.csv(women, 'GBV_women_raw2.csv', row.names=F)
 
 geo <- women %>% select(latitude, longitude, code, v008) %>%
   unique

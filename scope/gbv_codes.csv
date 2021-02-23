@@ -69,3 +69,8 @@ d101h,IR,Country control issue,Controling
 d101i,IR,Country control issue,Controling
 d101j,IR,Country control issue,Controling
 d102,IR,Number of control issues,Controling
+v113,IR,Main source drinking water
+v115,IR,Time to get drinking water
+v134,IR,Urban or rural
+v719,IR,who woman works for
+v717,IR,if woman is employed

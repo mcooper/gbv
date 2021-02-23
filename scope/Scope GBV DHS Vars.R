@@ -31,7 +31,7 @@ for (i in 1:nrow(ir_df)){
   print(paste0(i, ' ', round(i/nrow(ir_df), 3)*100, '% on ', ir_df$cc[i], '-', ir_df$num[i], '-', ir_df$subversion[i]))
 
   tryCatch({
-    dat <- read_dta(ir_df$ir[i])
+    dat <- read_dta(ir_df$ir[i], n_max=10)
   
     for (var in vars$label[vars$file=="IR"]){
       if (var %in% names(dat)){
@@ -54,7 +54,7 @@ ge_df <- lapply(X = ge, FUN = makeFileNameDf) %>%
 all <- Reduce(function(x, y){merge(x, y, all.x=T, all.y=T)},
               x=list(ir_df, ge_df))
 
-write.csv(all, '../dhs/scoped_vars.csv', row.names=F)
+write.csv(all, '~/gbv/scope/scoped_vars.csv', row.names=F)
 
 system('~/telegram.sh "Done with Scoping"')
 

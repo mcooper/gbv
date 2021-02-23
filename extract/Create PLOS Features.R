@@ -21,13 +21,21 @@ dat$plos_husband_age <- cut(dat$husband_age, c(14, 19, 29, 39, 49, max(dat$husba
 
 sel <-  dat %>%
   #Rename viol_sex to viol_sexu to make 4-char parsing possible
-  select(viol_phys, viol_emot, viol_sexu=viol_sex, viol_cont, plos_age, woman_literate, is_married, plos_births, plos_hhsize, 
+  select(viol_phys, viol_emot, viol_sexu=viol_sex, viol_cont, plos_age, woman_literate, 
+         is_married, plos_births, plos_hhsize, 
          plos_rural, husband_education_level, plos_husband_age, country, drought_cat,
-         code, year, latitude, longitude) %>%
+         code, year, latitude, longitude, hh_code
+         ) %>%
   mutate(survey_code=substr(code, 1, 6)) %>%
   na.omit %>%
 	group_by(code) %>%
 	mutate(ind_code = paste0(code, '-', row_number()))
+
+canbena <- dat %>%
+  select(hh_code, wealth_factor_harmonized, urban_rural, employer, employment, distance_to_water, 
+         water_source_drinking)
+
+sel <- merge(sel, canbena, all.x=T, all.y=F)
 
 sel$in_plos_paper <- sel$survey_code %in% c("SL-6-1", "TG-6-1", "BJ-7-1", "CI-6-1", "CM-6-1",
                                             "GA-6-1", "TD-7-1", "CD-6-1", "RW-7-1", "BU-7-1",
@@ -44,11 +52,11 @@ sel$in_lac <- sel$longitude < -30
 sel$in_asia <- sel$longitude > 51
 
 #Add GDL Admin ares
-sp <- read_sf('~', 'GDL Shapefiles V4')
-selsp <- st_as_sf(sel, coords=c('longitude', 'latitude'), remove=F) %>%
-  st_set_crs(4326)
+#sp <- read_sf('~', 'GDL Shapefiles V4')
+#selsp <- st_as_sf(sel, coords=c('longitude', 'latitude'), remove=F) %>%
+#  st_set_crs(4326)
 
-sel <- st_join(selsp, sp[ , 'GDLcode']) %>%
-  st_drop_geometry
+#sel <- st_join(selsp, sp[ , 'GDLcode']) %>%
+#  st_drop_geometry
 
 write.csv(sel, file.path(data_dir, 'GBV_sel.csv'), row.names=F)
