@@ -24,7 +24,7 @@ sel <-  dat %>%
   select(viol_phys, viol_emot, viol_sexu=viol_sex, viol_cont, plos_age, woman_literate, 
          is_married, plos_births, plos_hhsize, 
          plos_rural, husband_education_level, plos_husband_age, country, drought_cat,
-         code, year, latitude, longitude, hh_code
+         code, year, latitude, longitude, hh_code, date_cmc
          ) %>%
   mutate(survey_code=substr(code, 1, 6)) %>%
   na.omit %>%
