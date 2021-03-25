@@ -1,10 +1,5 @@
-if (Sys.info()['sysname']=='Linux'){
-  data_dir <- '/home/mattcoop/mortalityblob/gbv'
-  meta_dir <- '/home/mattcoop/gbv'
-} else if(Sys.info()['sysname']=='Windows'){
-  data_dir <- 'G://My Drive/GBV'
-  meta_dir <- 'C://Users/matt/gbv'
-}
+data_dir <- '/home/mattcoop/mortalityblob/gbv'
+meta_dir <- '/home/mattcoop/gbv'
 
 library(tidyverse)
 library(sf)
@@ -50,6 +45,16 @@ sel$in_cty <- sel$country %in% c("SL", "TG", "BJ", "CI", "CM",
 sel$in_afr <- sel$latitude < 23 & sel$longitude > -20 & sel$longitude < 50
 sel$in_lac <- sel$longitude < -30
 sel$in_asia <- sel$longitude > 51
+
+# Add Wealth
+wealth <- read.csv('/home/mattcoop/mortalityblob/dhs/hh_wealth_harmonized.csv') %>%
+  select(hh_code, wealth_factor_harmonized)
+
+wealth$wealth_quintile <- Hmisc::cut2(wealth$wealth_factor_harmonized, g=5)
+levels(wealth$wealth_quintile) <- c('poorest', 'poorer', 'middle', 'richer', 'richest')
+wealth$wealth_factor_harmonized <- NULL
+
+sel <- merge(sel, wealth, all.x=T, all.y=F)
 
 #Add GDL Admin ares
 #sp <- read_sf('~', 'GDL Shapefiles V4')

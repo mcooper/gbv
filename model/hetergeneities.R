@@ -111,6 +111,11 @@ res <- test_heterogeneity('urban_rural')
 system('~/telegram.sh "done with urban_rural"')
 write.csv(res, '~/mortalityblob/gbv/hetero_urban_rural.csv', row.names=F)
 
+#wealth_factor
+res <- test_heterogeneity('wealth_quintile')
+system('~/telegram.sh "done with wealth_quintile"')
+write.csv(res, '~/mortalityblob/gbv/hetero_wealth_quintile.csv', row.names=F)
+
 system('sudo poweroff')
 
 
