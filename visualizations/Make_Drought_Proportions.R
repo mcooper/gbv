@@ -73,4 +73,4 @@ sum <- dat %>%
 
 plot <- plot_grid(afr, plot_grid(asia, lac, align='v', ncol=1))
 
-ggsave(plot=plot, filename='~/ipv-rep-tex/img/drought_levels.pdf', width=8, height=8) 
+ggsave(plot=plot, filename='~/ipv-rep-tex/img/drought_levels.tiff', width=8, height=8, dpi=200) 

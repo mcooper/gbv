@@ -2,6 +2,7 @@ library(sf)
 library(tidyverse)
 library(ggimage)
 library(purrr)
+library(rnaturalearth)
 
 #########################
 #Read Data
@@ -21,7 +22,7 @@ ggplot() +
   coord_sf(xlim = c(min(data$longitude), max(data$longitude)), ylim = c(min(data$latitude), max(data$latitude))) + 
   theme_void()
 
-ggsave('~/ipv-rep-tex/img/Map.pdf', width=10, height=3)
+ggsave('~/ipv-rep-tex/img/Map.tiff', width=10, height=3)
 
 ##########################################
 ## Try plot of pies over map

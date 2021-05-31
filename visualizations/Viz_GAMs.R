@@ -35,4 +35,4 @@ res <- ggplot(allm) +
   theme_bw() + 
   labs(x='Drought Status', y='Average Marginal Effect (Probability)')
 
-ggsave(plot=res, filename='~/ipv-rep-tex/img/mod_results_gams.pdf', width=6, height=6)
+ggsave(plot=res, filename='~/ipv-rep-tex/img/mod_results_gams.tiff', width=6, height=6)

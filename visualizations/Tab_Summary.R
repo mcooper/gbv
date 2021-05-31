@@ -138,13 +138,17 @@ sel <- dat %>%
 t <- addmargins(table(countrycode(sel$country, 'dhs', 'country.name'), 
                       sel$year))
 
-print(xtable(t, 
-             caption='Count of Observations by Country and Year',
-             label='tab:cty_year',
+print(xtable(t[ , 1:9], 
+             caption='Count of Observations by Country and Year (Pt. 1)',
+             label='tab:cty_year1',
              digits=0),
-      file='~/ipv-rep-tex/tables/country_year.tex', 
-      floating.environment = "sidewaystable",
-      scalebox=0.95)
+      file='~/ipv-rep-tex/tables/country_year1.tex')
+
+print(xtable(t[ , 10:18], 
+             caption='Count of Observations by Country and Year (Pt. 2)',
+             label='tab:cty_year2',
+             digits=0),
+      file='~/ipv-rep-tex/tables/country_year2.tex')
 
 
 
